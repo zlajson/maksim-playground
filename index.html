@@ -82,7 +82,7 @@
         <p>Final Score: <span id="final-score">0</span></p>
         <button id="restart-btn">Play Again</button>
     </div>
-    <p id="instructions">Use arrow keys or WASD to move</p>
+    <p id="instructions">Arrow keys / WASD to move · Swipe on mobile</p>
 
     <script>
         const canvas = document.getElementById('game');
@@ -216,6 +216,39 @@
                     break;
             }
         });
+
+        // Touch/swipe controls for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const diffX = e.changedTouches[0].clientX - touchStartX;
+            const diffY = e.changedTouches[0].clientY - touchStartY;
+
+            // Only register if swipe is long enough
+            if (Math.abs(diffX) < 20 && Math.abs(diffY) < 20) return;
+
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                // Horizontal swipe
+                if (diffX > 0 && dx !== -1) { dx = 1; dy = 0; }
+                else if (diffX < 0 && dx !== 1) { dx = -1; dy = 0; }
+            } else {
+                // Vertical swipe
+                if (diffY > 0 && dy !== -1) { dx = 0; dy = 1; }
+                else if (diffY < 0 && dy !== 1) { dx = 0; dy = -1; }
+            }
+        }, { passive: false });
 
         restartBtn.addEventListener('click', init);
 
