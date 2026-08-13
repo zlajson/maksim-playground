@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maxim Snake</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 2rem;
+            color: #00d4aa;
+            text-shadow: 0 0 10px rgba(0, 212, 170, 0.5);
+        }
+
+        #score {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        canvas {
+            border: 2px solid #00d4aa;
+            border-radius: 4px;
+            background: #16213e;
+        }
+
+        #game-over {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #game-over h2 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+
+        #restart-btn {
+            padding: 10px 24px;
+            font-size: 1rem;
+            background: #00d4aa;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #restart-btn:hover {
+            background: #00b894;
+        }
+
+        #instructions {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐍 Maxim Snake</h1>
+    <div id="score">Score: <span id="score-value">0</span></div>
+    <canvas id="game" width="400" height="400"></canvas>
+    <div id="game-over">
+        <h2>Game Over!</h2>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <button id="restart-btn">Play Again</button>
+    </div>
+    <p id="instructions">Use arrow keys or WASD to move</p>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score-value');
+        const finalScoreEl = document.getElementById('final-score');
+        const gameOverEl = document.getElementById('game-over');
+        const restartBtn = document.getElementById('restart-btn');
+
+        const GRID_SIZE = 20;
+        const TILE_COUNT = canvas.width / GRID_SIZE;
+
+        let snake, food, dx, dy, score, gameLoop, gameRunning;
+
+        function init() {
+            snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
+            food = spawnFood();
+            dx = 1;
+            dy = 0;
+            score = 0;
+            gameRunning = true;
+            scoreEl.textContent = '0';
+            gameOverEl.style.display = 'none';
+
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, 120);
+        }
+
+        function spawnFood() {
+            let pos;
+            do {
+                pos = {
+                    x: Math.floor(Math.random() * TILE_COUNT),
+                    y: Math.floor(Math.random() * TILE_COUNT)
+                };
+            } while (snake.some(seg => seg.x === pos.x && seg.y === pos.y));
+            return pos;
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+            // Wall collision
+            if (head.x < 0 || head.x >= TILE_COUNT || head.y < 0 || head.y >= TILE_COUNT) {
+                return endGame();
+            }
+
+            // Self collision
+            if (snake.some(seg => seg.x === head.x && seg.y === head.y)) {
+                return endGame();
+            }
+
+            snake.unshift(head);
+
+            // Eat food
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreEl.textContent = score;
+                food = spawnFood();
+            } else {
+                snake.pop();
+            }
+
+            draw();
+        }
+
+        function draw() {
+            // Clear
+            ctx.fillStyle = '#16213e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid lines (subtle)
+            ctx.strokeStyle = '#1a2744';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < TILE_COUNT; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * GRID_SIZE, 0);
+                ctx.lineTo(i * GRID_SIZE, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * GRID_SIZE);
+                ctx.lineTo(canvas.width, i * GRID_SIZE);
+                ctx.stroke();
+            }
+
+            // Draw snake
+            snake.forEach((seg, i) => {
+                const brightness = 1 - (i / snake.length) * 0.4;
+                ctx.fillStyle = `rgba(0, 212, 170, ${brightness})`;
+                ctx.fillRect(seg.x * GRID_SIZE + 1, seg.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+                ctx.strokeStyle = '#00b894';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(seg.x * GRID_SIZE + 1, seg.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+            });
+
+            // Draw food
+            ctx.fillStyle = '#e94560';
+            ctx.beginPath();
+            ctx.arc(
+                food.x * GRID_SIZE + GRID_SIZE / 2,
+                food.y * GRID_SIZE + GRID_SIZE / 2,
+                GRID_SIZE / 2 - 2,
+                0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            finalScoreEl.textContent = score;
+            gameOverEl.style.display = 'block';
+        }
+
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowUp': case 'w': case 'W':
+                    if (dy !== 1) { dx = 0; dy = -1; }
+                    break;
+                case 'ArrowDown': case 's': case 'S':
+                    if (dy !== -1) { dx = 0; dy = 1; }
+                    break;
+                case 'ArrowLeft': case 'a': case 'A':
+                    if (dx !== 1) { dx = -1; dy = 0; }
+                    break;
+                case 'ArrowRight': case 'd': case 'D':
+                    if (dx !== -1) { dx = 1; dy = 0; }
+                    break;
+            }
+        });
+
+        restartBtn.addEventListener('click', init);
+
+        // Start
+        init();
+        draw();
+    </script>
+</body>
+</html>
