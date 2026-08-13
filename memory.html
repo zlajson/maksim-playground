@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match - Maxim's Arcade</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+            padding: 20px;
+        }
+
+        .back-link {
+            align-self: flex-start;
+            color: #00d4aa;
+            text-decoration: none;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover { text-decoration: underline; }
+
+        h1 { color: #9b59b6; margin-bottom: 10px; font-size: 2rem; }
+
+        .info {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 80px);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            width: 80px;
+            height: 80px;
+            background: #0f3460;
+            border: 2px solid #1a4a8a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .card:hover { transform: scale(1.05); }
+
+        .card.flipped {
+            background: #16213e;
+            border-color: #9b59b6;
+        }
+
+        .card.matched {
+            background: #1e4d2b;
+            border-color: #27ae60;
+            cursor: default;
+        }
+
+        .win-message {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .win-message h2 { color: #27ae60; margin-bottom: 10px; }
+
+        button {
+            padding: 12px 28px;
+            font-size: 1rem;
+            background: #9b59b6;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover { background: #8e44ad; }
+
+        @media (max-width: 400px) {
+            .grid { grid-template-columns: repeat(4, 65px); gap: 8px; }
+            .card { width: 65px; height: 65px; font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Arcade</a>
+    <h1>🧠 Memory Match</h1>
+
+    <div class="info">
+        <span>Moves: <strong id="moves">0</strong></span>
+        <span>Pairs: <strong id="pairs">0</strong>/8</span>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="win-message" id="win-msg">
+        <h2>🎉 You Win!</h2>
+        <p>Completed in <strong id="final-moves">0</strong> moves</p>
+        <br>
+        <button id="restart-btn">Play Again</button>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const movesEl = document.getElementById('moves');
+        const pairsEl = document.getElementById('pairs');
+        const winMsg = document.getElementById('win-msg');
+        const finalMovesEl = document.getElementById('final-moves');
+        const restartBtn = document.getElementById('restart-btn');
+
+        const emojis = ['🐶', '🐱', '🐸', '🦊', '🐼', '🐨', '🦁', '🐙'];
+        let cards = [];
+        let flipped = [];
+        let matched = 0;
+        let moves = 0;
+        let locked = false;
+
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function createBoard() {
+            grid.innerHTML = '';
+            cards = [];
+            flipped = [];
+            matched = 0;
+            moves = 0;
+            locked = false;
+            movesEl.textContent = '0';
+            pairsEl.textContent = '0';
+            winMsg.style.display = 'none';
+
+            const deck = shuffle([...emojis, ...emojis]);
+
+            deck.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.emoji = emoji;
+                card.dataset.index = index;
+                card.addEventListener('click', () => flipCard(card));
+                grid.appendChild(card);
+                cards.push(card);
+            });
+        }
+
+        function flipCard(card) {
+            if (locked) return;
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+            if (flipped.length >= 2) return;
+
+            card.textContent = card.dataset.emoji;
+            card.classList.add('flipped');
+            flipped.push(card);
+
+            if (flipped.length === 2) {
+                moves++;
+                movesEl.textContent = moves;
+                locked = true;
+
+                if (flipped[0].dataset.emoji === flipped[1].dataset.emoji) {
+                    // Match
+                    flipped[0].classList.add('matched');
+                    flipped[1].classList.add('matched');
+                    flipped = [];
+                    matched++;
+                    pairsEl.textContent = matched;
+                    locked = false;
+
+                    if (matched === 8) {
+                        setTimeout(() => {
+                            finalMovesEl.textContent = moves;
+                            winMsg.style.display = 'block';
+                        }, 300);
+                    }
+                } else {
+                    // No match — flip back
+                    setTimeout(() => {
+                        flipped[0].textContent = '';
+                        flipped[0].classList.remove('flipped');
+                        flipped[1].textContent = '';
+                        flipped[1].classList.remove('flipped');
+                        flipped = [];
+                        locked = false;
+                    }, 800);
+                }
+            }
+        }
+
+        restartBtn.addEventListener('click', createBoard);
+        createBoard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whack-a-Mole - Maxim's Arcade</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+            padding: 20px;
+        }
+
+        .back-link {
+            align-self: flex-start;
+            color: #00d4aa;
+            text-decoration: none;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover { text-decoration: underline; }
+
+        h1 { color: #f39c12; margin-bottom: 10px; font-size: 2rem; }
+
+        .info {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .hole {
+            width: 100px;
+            height: 100px;
+            background: #2d1b00;
+            border-radius: 50%;
+            border: 4px solid #5a3300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.1s;
+        }
+
+        .hole.active {
+            background: #4a2f00;
+            animation: pop 0.1s ease-out;
+        }
+
+        .hole.hit {
+            background: #27ae60;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(0.8); }
+            100% { transform: scale(1); }
+        }
+
+        button {
+            padding: 12px 28px;
+            font-size: 1rem;
+            background: #f39c12;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover { background: #e67e22; }
+
+        @media (max-width: 400px) {
+            .grid { grid-template-columns: repeat(3, 80px); }
+            .hole { width: 80px; height: 80px; font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Arcade</a>
+    <h1>🔨 Whack-a-Mole</h1>
+
+    <div class="info">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>Time: <strong id="timer">30</strong>s</span>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <button id="start-btn">Start Game</button>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const scoreEl = document.getElementById('score');
+        const timerEl = document.getElementById('timer');
+        const startBtn = document.getElementById('start-btn');
+
+        let score = 0;
+        let timeLeft = 30;
+        let gameInterval, timerInterval, moleTimeout;
+        let activeMole = -1;
+        let running = false;
+
+        // Create holes
+        const holes = [];
+        for (let i = 0; i < 9; i++) {
+            const hole = document.createElement('div');
+            hole.classList.add('hole');
+            hole.dataset.index = i;
+            hole.addEventListener('click', () => whack(i));
+            hole.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                whack(i);
+            }, { passive: false });
+            grid.appendChild(hole);
+            holes.push(hole);
+        }
+
+        function whack(index) {
+            if (!running || index !== activeMole) return;
+            score++;
+            scoreEl.textContent = score;
+            holes[activeMole].textContent = '';
+            holes[activeMole].classList.remove('active');
+            holes[activeMole].classList.add('hit');
+            setTimeout(() => holes[index].classList.remove('hit'), 200);
+            activeMole = -1;
+            clearTimeout(moleTimeout);
+            showMole();
+        }
+
+        function showMole() {
+            if (!running) return;
+
+            // Hide previous
+            if (activeMole >= 0) {
+                holes[activeMole].textContent = '';
+                holes[activeMole].classList.remove('active');
+            }
+
+            // Show new
+            let next;
+            do { next = Math.floor(Math.random() * 9); } while (next === activeMole);
+            activeMole = next;
+            holes[activeMole].textContent = '🐹';
+            holes[activeMole].classList.add('active');
+
+            // Auto-hide after random time
+            const delay = 600 + Math.random() * 800;
+            moleTimeout = setTimeout(() => {
+                if (activeMole >= 0) {
+                    holes[activeMole].textContent = '';
+                    holes[activeMole].classList.remove('active');
+                    activeMole = -1;
+                }
+                showMole();
+            }, delay);
+        }
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            scoreEl.textContent = '0';
+            timerEl.textContent = '30';
+            running = true;
+            startBtn.style.display = 'none';
+
+            showMole();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = timeLeft;
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        function endGame() {
+            running = false;
+            clearTimeout(moleTimeout);
+            clearInterval(timerInterval);
+            if (activeMole >= 0) {
+                holes[activeMole].textContent = '';
+                holes[activeMole].classList.remove('active');
+                activeMole = -1;
+            }
+            startBtn.textContent = `Game Over! Score: ${score} — Play Again`;
+            startBtn.style.display = 'inline-block';
+        }
+
+        startBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
