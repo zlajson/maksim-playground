@@ -425,22 +425,45 @@ function canPlaceBuilding(tx, ty, type) {
             ty < b.y + b.size && ty + def.size > b.y) return false;
     }
 
-    // Check trees (only check tiles the building would occupy)
-    for (const tree of state.trees) {
-        if (tree.alive && tree.x >= tx && tree.x < tx + def.size &&
-            tree.y >= ty && tree.y < ty + def.size) return false;
-    }
-
     return true;
 }
 
 function placeBuilding(tx, ty, type) {
-    if (!canPlaceBuilding(tx, ty, type)) {
+    const def = BUILDINGS[type];
+
+    // Check bounds
+    if (tx < 0 || ty < 0 || tx + def.size > MAP_WIDTH || ty + def.size > MAP_HEIGHT) {
         notify('Cannot place here!', true);
         return;
     }
 
-    const def = BUILDINGS[type];
+    // Check resources
+    for (const [res, amount] of Object.entries(def.cost)) {
+        if ((state.resources[res] || 0) < amount) {
+            notify('Not enough resources!', true);
+            return;
+        }
+    }
+
+    // Check overlap with other buildings
+    for (const b of state.buildings) {
+        if (tx < b.x + b.size && tx + def.size > b.x &&
+            ty < b.y + b.size && ty + def.size > b.y) {
+            notify('Overlaps another building!', true);
+            return;
+        }
+    }
+
+    // Clear any trees on the placement tiles (chop them automatically)
+    for (const tree of state.trees) {
+        if (tree.alive && tree.x >= tx && tree.x < tx + def.size &&
+            tree.y >= ty && tree.y < ty + def.size) {
+            tree.alive = false;
+            tree.regrowTimer = TREE_REGROW_TIME;
+            state.resources.wood += 1;
+        }
+    }
+
     // Deduct resources
     for (const [res, amount] of Object.entries(def.cost)) {
         state.resources[res] -= amount;
