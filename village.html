@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VILLAGE.IO</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    background: #1a1a2e; 
+    overflow: hidden; 
+    font-family: 'Segoe UI', sans-serif;
+    user-select: none;
+}
+canvas { display: block; }
+
+#ui-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+#resource-bar {
+    display: flex;
+    gap: 16px;
+    padding: 10px 20px;
+    background: rgba(20, 20, 40, 0.9);
+    border-bottom: 2px solid #3a3a5c;
+    pointer-events: auto;
+    flex-wrap: wrap;
+}
+
+.resource-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #e0e0e0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.resource-icon {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.resource-value {
+    color: #fff;
+    font-weight: 700;
+    min-width: 30px;
+}
+
+#build-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(20, 20, 40, 0.95);
+    border: 2px solid #3a3a5c;
+    border-radius: 12px;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.build-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+    background: #2a2a4a;
+    border: 2px solid #4a4a6a;
+    border-radius: 8px;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 70px;
+}
+
+.build-btn:hover {
+    background: #3a3a5a;
+    border-color: #7a7aaa;
+    color: #fff;
+}
+
+.build-btn.active {
+    background: #2a4a2a;
+    border-color: #5a9a5a;
+    color: #5f5;
+}
+
+.build-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.build-btn .icon { font-size: 22px; }
+.build-btn .label { font-size: 10px; font-weight: 600; text-transform: uppercase; }
+.build-btn .cost { font-size: 9px; color: #999; }
+
+#notification-area {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.notification {
+    padding: 10px 16px;
+    background: rgba(20, 60, 20, 0.9);
+    border: 1px solid #4a8a4a;
+    border-radius: 8px;
+    color: #aaffaa;
+    font-size: 13px;
+    animation: slideIn 0.3s ease, fadeOut 0.5s ease 2.5s forwards;
+}
+
+.notification.warning {
+    background: rgba(80, 40, 10, 0.9);
+    border-color: #aa6a2a;
+    color: #ffcc88;
+}
+
+@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+#game-title {
+    position: fixed;
+    top: 52px;
+    left: 20px;
+    color: #7a9aff;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    pointer-events: none;
+    z-index: 10;
+    text-shadow: 0 0 10px rgba(100,150,255,0.3);
+}
+
+#village-stats {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    color: #aaa;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 10;
+    line-height: 1.6;
+}
+
+#instructions {
+    position: fixed;
+    bottom: 90px;
+    left: 20px;
+    color: #666;
+    font-size: 11px;
+    pointer-events: none;
+    z-index: 10;
+    line-height: 1.6;
+}
+
+#tooltip {
+    position: fixed;
+    padding: 8px 12px;
+    background: rgba(10, 10, 30, 0.95);
+    border: 1px solid #5a5a8a;
+    border-radius: 6px;
+    color: #ddd;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 30;
+    display: none;
+    max-width: 200px;
+    line-height: 1.4;
+}
+</style>
+</head>
+<body>
+
+<div id="ui-overlay">
+    <div id="resource-bar">
+        <div class="resource-item"><span class="resource-icon">🪵</span><span>Wood:</span><span class="resource-value" id="res-wood">0</span></div>
+        <div class="resource-item"><span class="resource-icon">🪵</span><span>Planks:</span><span class="resource-value" id="res-planks">0</span></div>
+        <div class="resource-item"><span class="resource-icon">🌾</span><span>Wheat:</span><span class="resource-value" id="res-wheat">0</span></div>
+        <div class="resource-item"><span class="resource-icon">🫘</span><span>Flour:</span><span class="resource-value" id="res-flour">0</span></div>
+        <div class="resource-item"><span class="resource-icon">🍞</span><span>Bread:</span><span class="resource-value" id="res-bread">0</span></div>
+        <div class="resource-item"><span class="resource-icon">🪙</span><span>Gold:</span><span class="resource-value" id="res-gold">0</span></div>
+        <div class="resource-item"><span class="resource-icon">👥</span><span>Villagers:</span><span class="resource-value" id="res-villagers">0</span></div>
+    </div>
+</div>
+
+<div id="game-title">VILLAGE.IO</div>
+<div id="village-stats"></div>
+<div id="instructions">
+    WASD / Arrows: Move camera<br>
+    Click tree: Chop wood<br>
+    Select building below, click to place<br>
+    Scroll: Zoom
+</div>
+
+<div id="build-panel"></div>
+<div id="notification-area"></div>
+<div id="tooltip"></div>
+
+<canvas id="game"></canvas>
+
+<script>
+// ===== GAME CONSTANTS =====
+const TILE_SIZE = 64;
+const MAP_WIDTH = 40;
+const MAP_HEIGHT = 40;
+const TREE_REGROW_TIME = 30000;
+
+// ===== BUILDING DEFINITIONS =====
+const BUILDINGS = {
+    lumberjack: { name: 'Lumberjack', icon: '🪓', cost: { wood: 10 }, size: 2, desc: 'Auto-chops nearby trees', color: '#5a3a1a', produces: 'wood', rate: 3000 },
+    sawmill: { name: 'Sawmill', icon: '🏭', cost: { wood: 20 }, size: 2, desc: 'Converts wood to planks', color: '#6a4a2a', input: 'wood', output: 'planks', rate: 4000 },
+    farm: { name: 'Farm', icon: '🌾', cost: { planks: 10 }, size: 3, desc: 'Grows wheat over time', color: '#4a6a2a', produces: 'wheat', rate: 5000 },
+    windmill: { name: 'Windmill', icon: '🌬️', cost: { planks: 15, wood: 10 }, size: 2, desc: 'Grinds wheat into flour', color: '#7a6a4a', input: 'wheat', output: 'flour', rate: 4000 },
+    bakery: { name: 'Bakery', icon: '🍞', cost: { planks: 20, gold: 5 }, size: 2, desc: 'Bakes flour into bread', color: '#8a5a3a', input: 'flour', output: 'bread', rate: 5000 },
+    market: { name: 'Market', icon: '🏪', cost: { planks: 25, gold: 10 }, size: 3, desc: 'Attracts travellers to buy goods', color: '#4a4a6a', special: 'market', rate: 8000 },
+    house: { name: 'House', icon: '🏠', cost: { planks: 15, wood: 5 }, size: 2, desc: '+2 villagers capacity', color: '#5a4a3a', special: 'house' }
+};
+
+// ===== GAME STATE =====
+const state = {
+    resources: { wood: 5, planks: 0, wheat: 0, flour: 0, bread: 0, gold: 0 },
+    buildings: [],
+    villagers: [],
+    trees: [],
+    camera: { x: MAP_WIDTH * TILE_SIZE / 2 - 400, y: MAP_HEIGHT * TILE_SIZE / 2 - 300 },
+    zoom: 1,
+    selectedBuilding: null,
+    maxVillagers: 2,
+    villagersUsed: 0,
+    travellers: [],
+    particles: [],
+    notifications: [],
+    time: 0,
+    chopTarget: null
+};
+
+// ===== CANVAS SETUP =====
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ===== MAP GENERATION =====
+function generateMap() {
+    // Place trees randomly
+    for (let i = 0; i < 200; i++) {
+        const tx = Math.floor(Math.random() * MAP_WIDTH);
+        const ty = Math.floor(Math.random() * MAP_HEIGHT);
+        // Keep center area somewhat clear
+        const cx = MAP_WIDTH / 2, cy = MAP_HEIGHT / 2;
+        const dist = Math.hypot(tx - cx, ty - cy);
+        if (dist < 4) continue;
+        state.trees.push({
+            x: tx, y: ty,
+            health: 3,
+            maxHealth: 3,
+            regrowTimer: 0,
+            alive: true,
+            type: Math.random() < 0.3 ? 'pine' : 'oak'
+        });
+    }
+
+    // Starting villagers
+    for (let i = 0; i < 2; i++) {
+        spawnVillager();
+    }
+}
+
+function spawnVillager() {
+    const cx = MAP_WIDTH / 2 * TILE_SIZE;
+    const cy = MAP_HEIGHT / 2 * TILE_SIZE;
+    state.villagers.push({
+        x: cx + (Math.random() - 0.5) * 100,
+        y: cy + (Math.random() - 0.5) * 100,
+        targetX: cx,
+        targetY: cy,
+        task: null,
+        building: null,
+        speed: 1.5 + Math.random() * 0.5,
+        animFrame: 0,
+        carrying: null,
+        idle: true,
+        idleTimer: 0
+    });
+}
+
+// ===== INPUT HANDLING =====
+const keys = {};
+let mouseX = 0, mouseY = 0;
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let camStart = { x: 0, y: 0 };
+
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) {
+        isDragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        camStart = { x: state.camera.x, y: state.camera.y };
+    }
+});
+
+canvas.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    if (isDragging) {
+        state.camera.x = camStart.x - (e.clientX - dragStart.x) / state.zoom;
+        state.camera.y = camStart.y - (e.clientY - dragStart.y) / state.zoom;
+    }
+});
+
+canvas.addEventListener('mouseup', e => {
+    if (e.button === 0) {
+        const wasDrag = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) > 5;
+        isDragging = false;
+        if (!wasDrag) handleClick(e);
+    }
+});
+
+canvas.addEventListener('wheel', e => {
+    const oldZoom = state.zoom;
+    state.zoom = Math.max(0.5, Math.min(2, state.zoom - e.deltaY * 0.001));
+    // Zoom toward mouse
+    const wx = (mouseX / oldZoom + state.camera.x);
+    const wy = (mouseY / oldZoom + state.camera.y);
+    state.camera.x = wx - mouseX / state.zoom;
+    state.camera.y = wy - mouseY / state.zoom;
+    e.preventDefault();
+}, { passive: false });
+
+function screenToWorld(sx, sy) {
+    return {
+        x: sx / state.zoom + state.camera.x,
+        y: sy / state.zoom + state.camera.y
+    };
+}
+
+function worldToTile(wx, wy) {
+    return {
+        tx: Math.floor(wx / TILE_SIZE),
+        ty: Math.floor(wy / TILE_SIZE)
+    };
+}
+
+function handleClick(e) {
+    const world = screenToWorld(e.clientX, e.clientY);
+    const tile = worldToTile(world.x, world.y);
+
+    if (state.selectedBuilding) {
+        placeBuilding(tile.tx, tile.ty, state.selectedBuilding);
+        return;
+    }
+
+    // Check if clicking a tree
+    const tree = state.trees.find(t => t.alive && t.x === tile.tx && t.y === tile.ty);
+    if (tree) {
+        chopTree(tree);
+        return;
+    }
+
+    // Check if clicking a building
+    const building = state.buildings.find(b => 
+        tile.tx >= b.x && tile.tx < b.x + b.size &&
+        tile.ty >= b.y && tile.ty < b.y + b.size
+    );
+    if (building) {
+        showBuildingInfo(building);
+    }
+}
+
+// ===== TREE CHOPPING =====
+function chopTree(tree) {
+    tree.health--;
+    spawnParticles(tree.x * TILE_SIZE + TILE_SIZE/2, tree.y * TILE_SIZE + TILE_SIZE/2, '#4a2a0a', 5);
+    
+    if (tree.health <= 0) {
+        tree.alive = false;
+        tree.regrowTimer = TREE_REGROW_TIME;
+        state.resources.wood += 2;
+        spawnParticles(tree.x * TILE_SIZE + TILE_SIZE/2, tree.y * TILE_SIZE + TILE_SIZE/2, '#2a8a2a', 8);
+        notify(`+2 Wood from tree!`);
+    }
+}
+
+// ===== BUILDING PLACEMENT =====
+function canPlaceBuilding(tx, ty, type) {
+    const def = BUILDINGS[type];
+    // Check bounds
+    if (tx < 0 || ty < 0 || tx + def.size > MAP_WIDTH || ty + def.size > MAP_HEIGHT) return false;
+    
+    // Check resources
+    for (const [res, amount] of Object.entries(def.cost)) {
+        if ((state.resources[res] || 0) < amount) return false;
+    }
+
+    // Check overlap with other buildings
+    for (const b of state.buildings) {
+        if (tx < b.x + b.size && tx + def.size > b.x &&
+            ty < b.y + b.size && ty + def.size > b.y) return false;
+    }
+
+    // Check trees
+    for (const tree of state.trees) {
+        if (tree.alive && tree.x >= tx && tree.x < tx + def.size &&
+            tree.y >= ty && tree.y < ty + def.size) return false;
+    }
+
+    return true;
+}
+
+function placeBuilding(tx, ty, type) {
+    if (!canPlaceBuilding(tx, ty, type)) {
+        notify('Cannot place here!', true);
+        return;
+    }
+
+    const def = BUILDINGS[type];
+    // Deduct resources
+    for (const [res, amount] of Object.entries(def.cost)) {
+        state.resources[res] -= amount;
+    }
+
+    const building = {
+        x: tx, y: ty,
+        type: type,
+        size: def.size,
+        lastProduced: Date.now(),
+        assignedVillager: null,
+        level: 1,
+        active: true
+    };
+    state.buildings.push(building);
+
+    // Handle house special
+    if (def.special === 'house') {
+        state.maxVillagers += 2;
+        if (state.villagers.length < state.maxVillagers) {
+            spawnVillager();
+            spawnVillager();
+        }
+    }
+
+    spawnParticles(tx * TILE_SIZE + TILE_SIZE, ty * TILE_SIZE + TILE_SIZE, '#ffcc00', 12);
+    notify(`${def.name} built!`);
+    state.selectedBuilding = null;
+    updateBuildPanel();
+}
+
+// ===== VILLAGER AI =====
+function updateVillagers(dt) {
+    for (const v of state.villagers) {
+        // Find task if idle
+        if (v.idle) {
+            v.idleTimer += dt;
+            if (v.idleTimer > 1000) {
+                assignTask(v);
+                v.idleTimer = 0;
+            }
+        }
+
+        // Move toward target
+        const dx = v.targetX - v.x;
+        const dy = v.targetY - v.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 3) {
+            v.x += (dx / dist) * v.speed;
+            v.y += (dy / dist) * v.speed;
+            v.animFrame += 0.1;
+        } else if (v.task === 'goToBuilding' && v.building) {
+            v.task = 'working';
+            v.idle = false;
+        } else if (v.task === 'chopTree' && v.targetTree) {
+            if (v.targetTree.alive) {
+                chopTree(v.targetTree);
+                v.targetTree = null;
+            }
+            v.task = null;
+            v.idle = true;
+        }
+
+        // Wander if idle
+        if (v.idle && Math.random() < 0.005) {
+            const cx = MAP_WIDTH / 2 * TILE_SIZE;
+            const cy = MAP_HEIGHT / 2 * TILE_SIZE;
+            v.targetX = cx + (Math.random() - 0.5) * 200;
+            v.targetY = cy + (Math.random() - 0.5) * 200;
+        }
+    }
+}
+
+function assignTask(villager) {
+    // Try to assign to unoccupied building
+    for (const b of state.buildings) {
+        const def = BUILDINGS[b.type];
+        if (def.special) continue; // Houses/markets don't need workers directly
+        
+        const hasWorker = state.villagers.some(v => v.building === b && v !== villager);
+        if (!hasWorker) {
+            villager.building = b;
+            villager.task = 'goToBuilding';
+            villager.targetX = b.x * TILE_SIZE + TILE_SIZE;
+            villager.targetY = b.y * TILE_SIZE + TILE_SIZE;
+            villager.idle = false;
+            return;
+        }
+    }
+
+    // Auto chop trees if lumberjack exists
+    const hasLumberjack = state.buildings.some(b => b.type === 'lumberjack');
+    if (hasLumberjack && Math.random() < 0.3) {
+        const nearbyTree = state.trees.find(t => t.alive);
+        if (nearbyTree) {
+            villager.task = 'chopTree';
+            villager.targetTree = nearbyTree;
+            villager.targetX = nearbyTree.x * TILE_SIZE + TILE_SIZE / 2;
+            villager.targetY = nearbyTree.y * TILE_SIZE + TILE_SIZE / 2;
+            villager.idle = false;
+            return;
+        }
+    }
+}
+
+// ===== PRODUCTION SYSTEM =====
+function updateProduction(dt) {
+    const now = Date.now();
+    
+    for (const b of state.buildings) {
+        const def = BUILDINGS[b.type];
+        if (!def.rate) continue;
+        if (now - b.lastProduced < def.rate) continue;
+
+        if (def.produces) {
+            // Direct production (lumberjack, farm)
+            if (def.produces === 'wood') {
+                // Lumberjack: auto-chop nearby tree
+                const nearbyTree = state.trees.find(t => 
+                    t.alive && Math.hypot(t.x - b.x, t.y - b.y) < 6
+                );
+                if (nearbyTree) {
+                    nearbyTree.health--;
+                    if (nearbyTree.health <= 0) {
+                        nearbyTree.alive = false;
+                        nearbyTree.regrowTimer = TREE_REGROW_TIME;
+                        state.resources.wood += 2;
+                    } else {
+                        state.resources.wood += 1;
+                    }
+                    b.lastProduced = now;
+                    spawnParticles(b.x * TILE_SIZE + TILE_SIZE, b.y * TILE_SIZE + TILE_SIZE, '#4a8a2a', 3);
+                }
+            } else if (def.produces === 'wheat') {
+                state.resources.wheat += 1;
+                b.lastProduced = now;
+                spawnParticles(b.x * TILE_SIZE + TILE_SIZE, b.y * TILE_SIZE + TILE_SIZE, '#daa520', 3);
+            }
+        } else if (def.input && def.output) {
+            // Conversion building
+            if (state.resources[def.input] >= 2) {
+                state.resources[def.input] -= 2;
+                state.resources[def.output] += 1;
+                b.lastProduced = now;
+                spawnParticles(b.x * TILE_SIZE + TILE_SIZE, b.y * TILE_SIZE + TILE_SIZE, '#aaaaff', 3);
+            }
+        } else if (def.special === 'market') {
+            // Spawn traveller
+            if (state.travellers.length < 3) {
+                spawnTraveller(b);
+                b.lastProduced = now;
+            }
+        }
+    }
+}
+
+// ===== TRAVELLER SYSTEM =====
+function spawnTraveller(market) {
+    const edge = Math.floor(Math.random() * 4);
+    let x, y;
+    if (edge === 0) { x = 0; y = Math.random() * MAP_HEIGHT * TILE_SIZE; }
+    else if (edge === 1) { x = MAP_WIDTH * TILE_SIZE; y = Math.random() * MAP_HEIGHT * TILE_SIZE; }
+    else if (edge === 2) { x = Math.random() * MAP_WIDTH * TILE_SIZE; y = 0; }
+    else { x = Math.random() * MAP_WIDTH * TILE_SIZE; y = MAP_HEIGHT * TILE_SIZE; }
+
+    state.travellers.push({
+        x, y,
+        targetX: market.x * TILE_SIZE + TILE_SIZE,
+        targetY: market.y * TILE_SIZE + TILE_SIZE,
+        speed: 1.2,
+        state: 'approaching',
+        market: market,
+        buyTimer: 0,
+        bought: false
+    });
+}
+
+function updateTravellers(dt) {
+    for (let i = state.travellers.length - 1; i >= 0; i--) {
+        const t = state.travellers[i];
+        
+        if (t.state === 'approaching') {
+            const dx = t.targetX - t.x;
+            const dy = t.targetY - t.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 5) {
+                t.x += (dx / dist) * t.speed;
+                t.y += (dy / dist) * t.speed;
+            } else {
+                t.state = 'buying';
+                t.buyTimer = 2000;
+            }
+        } else if (t.state === 'buying') {
+            t.buyTimer -= dt;
+            if (t.buyTimer <= 0) {
+                // Buy goods
+                let sold = false;
+                if (state.resources.bread > 0) {
+                    state.resources.bread--;
+                    state.resources.gold += 5;
+                    notify('+5 Gold (sold bread)');
+                    sold = true;
+                } else if (state.resources.flour > 0) {
+                    state.resources.flour--;
+                    state.resources.gold += 3;
+                    notify('+3 Gold (sold flour)');
+                    sold = true;
+                } else if (state.resources.planks > 0) {
+                    state.resources.planks -= 2;
+                    state.resources.gold += 2;
+                    notify('+2 Gold (sold planks)');
+                    sold = true;
+                } else if (state.resources.wheat > 0) {
+                    state.resources.wheat -= 2;
+                    state.resources.gold += 1;
+                    notify('+1 Gold (sold wheat)');
+                    sold = true;
+                }
+
+                if (sold) {
+                    spawnParticles(t.x, t.y, '#ffd700', 8);
+                }
+
+                // Leave
+                t.state = 'leaving';
+                const edge = Math.floor(Math.random() * 4);
+                if (edge === 0) { t.targetX = -100; t.targetY = t.y; }
+                else if (edge === 1) { t.targetX = MAP_WIDTH * TILE_SIZE + 100; t.targetY = t.y; }
+                else if (edge === 2) { t.targetX = t.x; t.targetY = -100; }
+                else { t.targetX = t.x; t.targetY = MAP_HEIGHT * TILE_SIZE + 100; }
+            }
+        } else if (t.state === 'leaving') {
+            const dx = t.targetX - t.x;
+            const dy = t.targetY - t.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 5) {
+                t.x += (dx / dist) * t.speed;
+                t.y += (dy / dist) * t.speed;
+            } else {
+                state.travellers.splice(i, 1);
+            }
+        }
+    }
+}
+
+// ===== TREE REGROWTH =====
+function updateTrees(dt) {
+    for (const tree of state.trees) {
+        if (!tree.alive) {
+            tree.regrowTimer -= dt;
+            if (tree.regrowTimer <= 0) {
+                tree.alive = true;
+                tree.health = tree.maxHealth;
+            }
+        }
+    }
+}
+
+// ===== PARTICLES =====
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        state.particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4 - 2,
+            life: 1,
+            color,
+            size: 3 + Math.random() * 3
+        });
+    }
+}
+
+function updateParticles(dt) {
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.1;
+        p.life -= 0.02;
+        if (p.life <= 0) state.particles.splice(i, 1);
+    }
+}
+
+// ===== NOTIFICATIONS =====
+function notify(text, isWarning = false) {
+    const area = document.getElementById('notification-area');
+    const el = document.createElement('div');
+    el.className = 'notification' + (isWarning ? ' warning' : '');
+    el.textContent = text;
+    area.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+// ===== RENDERING =====
+function render() {
+    ctx.fillStyle = '#2a5a2a';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.scale(state.zoom, state.zoom);
+    ctx.translate(-state.camera.x, -state.camera.y);
+
+    // Draw ground tiles
+    const startTX = Math.max(0, Math.floor(state.camera.x / TILE_SIZE));
+    const startTY = Math.max(0, Math.floor(state.camera.y / TILE_SIZE));
+    const endTX = Math.min(MAP_WIDTH, Math.ceil((state.camera.x + W / state.zoom) / TILE_SIZE));
+    const endTY = Math.min(MAP_HEIGHT, Math.ceil((state.camera.y + H / state.zoom) / TILE_SIZE));
+
+    for (let tx = startTX; tx < endTX; tx++) {
+        for (let ty = startTY; ty < endTY; ty++) {
+            const x = tx * TILE_SIZE;
+            const y = ty * TILE_SIZE;
+            const shade = ((tx + ty) % 2 === 0) ? '#3a7a3a' : '#358035';
+            ctx.fillStyle = shade;
+            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        }
+    }
+
+    // Draw grid lines (subtle)
+    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+    ctx.lineWidth = 0.5;
+    for (let tx = startTX; tx <= endTX; tx++) {
+        ctx.beginPath();
+        ctx.moveTo(tx * TILE_SIZE, startTY * TILE_SIZE);
+        ctx.lineTo(tx * TILE_SIZE, endTY * TILE_SIZE);
+        ctx.stroke();
+    }
+    for (let ty = startTY; ty <= endTY; ty++) {
+        ctx.beginPath();
+        ctx.moveTo(startTX * TILE_SIZE, ty * TILE_SIZE);
+        ctx.lineTo(endTX * TILE_SIZE, ty * TILE_SIZE);
+        ctx.stroke();
+    }
+
+    // Draw buildings
+    for (const b of state.buildings) {
+        drawBuilding(b);
+    }
+
+    // Draw trees
+    for (const tree of state.trees) {
+        if (tree.alive) drawTree(tree);
+    }
+
+    // Draw placement preview
+    if (state.selectedBuilding) {
+        const world = screenToWorld(mouseX, mouseY);
+        const tile = worldToTile(world.x, world.y);
+        const def = BUILDINGS[state.selectedBuilding];
+        const canPlace = canPlaceBuilding(tile.tx, tile.ty, state.selectedBuilding);
+        
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = canPlace ? '#4a8a4a' : '#8a4a4a';
+        ctx.fillRect(tile.tx * TILE_SIZE, tile.ty * TILE_SIZE, def.size * TILE_SIZE, def.size * TILE_SIZE);
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = canPlace ? '#5aff5a' : '#ff5a5a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tile.tx * TILE_SIZE, tile.ty * TILE_SIZE, def.size * TILE_SIZE, def.size * TILE_SIZE);
+        
+        ctx.font = `${TILE_SIZE * 0.6}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(def.icon, tile.tx * TILE_SIZE + def.size * TILE_SIZE / 2, tile.ty * TILE_SIZE + def.size * TILE_SIZE / 2 + 10);
+    }
+
+    // Draw villagers
+    for (const v of state.villagers) {
+        drawVillager(v);
+    }
+
+    // Draw travellers
+    for (const t of state.travellers) {
+        drawTraveller(t);
+    }
+
+    // Draw particles
+    for (const p of state.particles) {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+}
+
+function drawTree(tree) {
+    const x = tree.x * TILE_SIZE + TILE_SIZE / 2;
+    const y = tree.y * TILE_SIZE + TILE_SIZE;
+    
+    // Trunk
+    ctx.fillStyle = '#4a2a0a';
+    ctx.fillRect(x - 4, y - 30, 8, 30);
+    
+    // Foliage
+    if (tree.type === 'pine') {
+        ctx.fillStyle = '#1a6a2a';
+        ctx.beginPath();
+        ctx.moveTo(x, y - 55);
+        ctx.lineTo(x - 18, y - 20);
+        ctx.lineTo(x + 18, y - 20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#1a5a1a';
+        ctx.beginPath();
+        ctx.moveTo(x, y - 45);
+        ctx.lineTo(x - 14, y - 18);
+        ctx.lineTo(x + 14, y - 18);
+        ctx.closePath();
+        ctx.fill();
+    } else {
+        ctx.fillStyle = '#2a8a2a';
+        ctx.beginPath();
+        ctx.arc(x, y - 35, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a6a1a';
+        ctx.beginPath();
+        ctx.arc(x - 6, y - 38, 12, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Health bar if damaged
+    if (tree.health < tree.maxHealth) {
+        const barW = 30;
+        const pct = tree.health / tree.maxHealth;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x - barW/2, y - 60, barW, 4);
+        ctx.fillStyle = pct > 0.5 ? '#4a4' : '#a44';
+        ctx.fillRect(x - barW/2, y - 60, barW * pct, 4);
+    }
+}
+
+function drawBuilding(b) {
+    const def = BUILDINGS[b.type];
+    const x = b.x * TILE_SIZE;
+    const y = b.y * TILE_SIZE;
+    const s = b.size * TILE_SIZE;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(x + 4, y + 4, s, s);
+
+    // Main structure
+    ctx.fillStyle = def.color;
+    ctx.fillRect(x, y, s, s);
+
+    // Roof
+    ctx.fillStyle = shadeColor(def.color, -20);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + s/2, y - s * 0.3);
+    ctx.lineTo(x + s, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Border
+    ctx.strokeStyle = shadeColor(def.color, -40);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, s, s);
+
+    // Icon
+    ctx.font = `${s * 0.4}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(def.icon, x + s/2, y + s/2);
+
+    // Production indicator
+    const now = Date.now();
+    if (def.rate) {
+        const progress = Math.min(1, (now - b.lastProduced) / def.rate);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(x + 4, y + s - 8, s - 8, 4);
+        ctx.fillStyle = '#5aff5a';
+        ctx.fillRect(x + 4, y + s - 8, (s - 8) * progress, 4);
+    }
+}
+
+function drawVillager(v) {
+    const bobY = Math.sin(v.animFrame) * 2;
+    
+    // Body
+    ctx.fillStyle = '#deb887';
+    ctx.beginPath();
+    ctx.arc(v.x, v.y - 12 + bobY, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head
+    ctx.fillStyle = '#f5deb3';
+    ctx.beginPath();
+    ctx.arc(v.x, v.y - 22 + bobY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Task indicator
+    if (v.task === 'working') {
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚒️', v.x, v.y - 30 + bobY);
+    }
+}
+
+function drawTraveller(t) {
+    // Body (different color from villagers)
+    ctx.fillStyle = '#6a4aaa';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y - 12, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head
+    ctx.fillStyle = '#e8d0a0';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y - 22, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hat
+    ctx.fillStyle = '#4a2a6a';
+    ctx.fillRect(t.x - 6, t.y - 28, 12, 3);
+
+    // Buying indicator
+    if (t.state === 'buying') {
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🪙', t.x, t.y - 34);
+    }
+}
+
+function shadeColor(hex, percent) {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const r = Math.min(255, Math.max(0, (num >> 16) + percent));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
+    return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
+}
+
+// ===== UI UPDATES =====
+function updateUI() {
+    document.getElementById('res-wood').textContent = state.resources.wood;
+    document.getElementById('res-planks').textContent = state.resources.planks;
+    document.getElementById('res-wheat').textContent = state.resources.wheat;
+    document.getElementById('res-flour').textContent = state.resources.flour;
+    document.getElementById('res-bread').textContent = state.resources.bread;
+    document.getElementById('res-gold').textContent = state.resources.gold;
+    document.getElementById('res-villagers').textContent = `${state.villagers.length}/${state.maxVillagers}`;
+
+    // Village stats
+    const stats = document.getElementById('village-stats');
+    stats.innerHTML = `
+        Buildings: ${state.buildings.length}<br>
+        Trees: ${state.trees.filter(t => t.alive).length}<br>
+        Travellers: ${state.travellers.length}
+    `;
+}
+
+function updateBuildPanel() {
+    const panel = document.getElementById('build-panel');
+    panel.innerHTML = '';
+
+    for (const [key, def] of Object.entries(BUILDINGS)) {
+        const btn = document.createElement('div');
+        btn.className = 'build-btn';
+        
+        let canAfford = true;
+        const costStr = Object.entries(def.cost).map(([r, a]) => {
+            if (state.resources[r] < a) canAfford = false;
+            return `${a} ${r}`;
+        }).join(', ');
+
+        if (!canAfford) btn.classList.add('disabled');
+        if (state.selectedBuilding === key) btn.classList.add('active');
+
+        btn.innerHTML = `
+            <span class="icon">${def.icon}</span>
+            <span class="label">${def.name}</span>
+            <span class="cost">${costStr}</span>
+        `;
+
+        btn.addEventListener('click', () => {
+            if (!canAfford) {
+                notify('Not enough resources!', true);
+                return;
+            }
+            state.selectedBuilding = state.selectedBuilding === key ? null : key;
+            updateBuildPanel();
+        });
+
+        btn.addEventListener('mouseenter', (e) => {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'block';
+            tooltip.style.left = e.clientX + 10 + 'px';
+            tooltip.style.top = e.clientY - 40 + 'px';
+            tooltip.textContent = def.desc;
+        });
+
+        btn.addEventListener('mouseleave', () => {
+            document.getElementById('tooltip').style.display = 'none';
+        });
+
+        panel.appendChild(btn);
+    }
+}
+
+function showBuildingInfo(building) {
+    const def = BUILDINGS[building.type];
+    notify(`${def.name} (Lv${building.level}) - ${def.desc}`);
+}
+
+// ===== CAMERA MOVEMENT =====
+function updateCamera(dt) {
+    const speed = 5;
+    if (keys['w'] || keys['arrowup']) state.camera.y -= speed;
+    if (keys['s'] || keys['arrowdown']) state.camera.y += speed;
+    if (keys['a'] || keys['arrowleft']) state.camera.x -= speed;
+    if (keys['d'] || keys['arrowright']) state.camera.x += speed;
+
+    // Clamp
+    state.camera.x = Math.max(-100, Math.min(MAP_WIDTH * TILE_SIZE - W / state.zoom + 100, state.camera.x));
+    state.camera.y = Math.max(-100, Math.min(MAP_HEIGHT * TILE_SIZE - H / state.zoom + 100, state.camera.y));
+}
+
+// ===== SAVE / LOAD =====
+function saveGame() {
+    const saveData = {
+        resources: state.resources,
+        buildings: state.buildings.map(b => ({ x: b.x, y: b.y, type: b.type, size: b.size, level: b.level })),
+        trees: state.trees.map(t => ({ x: t.x, y: t.y, health: t.health, maxHealth: t.maxHealth, alive: t.alive, type: t.type })),
+        maxVillagers: state.maxVillagers,
+        villagerCount: state.villagers.length
+    };
+    localStorage.setItem('village_io_save', JSON.stringify(saveData));
+}
+
+function loadGame() {
+    const data = localStorage.getItem('village_io_save');
+    if (!data) return false;
+    
+    try {
+        const save = JSON.parse(data);
+        state.resources = save.resources;
+        state.buildings = save.buildings.map(b => ({
+            ...b, lastProduced: Date.now(), assignedVillager: null, active: true
+        }));
+        state.trees = save.trees.map(t => ({
+            ...t, regrowTimer: t.alive ? 0 : TREE_REGROW_TIME / 2
+        }));
+        state.maxVillagers = save.maxVillagers;
+        state.villagers = [];
+        for (let i = 0; i < save.villagerCount; i++) {
+            spawnVillager();
+        }
+        return true;
+    } catch(e) {
+        return false;
+    }
+}
+
+// ===== GAME LOOP =====
+let lastTime = Date.now();
+let saveTimer = 0;
+
+function gameLoop() {
+    const now = Date.now();
+    const dt = now - lastTime;
+    lastTime = now;
+    state.time += dt;
+
+    updateCamera(dt);
+    updateVillagers(dt);
+    updateProduction(dt);
+    updateTravellers(dt);
+    updateTrees(dt);
+    updateParticles(dt);
+
+    render();
+    updateUI();
+
+    // Auto-save every 30 seconds
+    saveTimer += dt;
+    if (saveTimer > 30000) {
+        saveGame();
+        saveTimer = 0;
+    }
+
+    // Refresh build panel periodically
+    if (Math.floor(state.time / 1000) % 2 === 0) {
+        updateBuildPanel();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// ===== INIT =====
+function init() {
+    const loaded = loadGame();
+    if (!loaded) {
+        generateMap();
+    }
+    updateBuildPanel();
+    notify('Welcome to VILLAGE.IO! Chop trees and build your village!');
+    gameLoop();
+}
+
+// Handle ESC to cancel build
+window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        state.selectedBuilding = null;
+        updateBuildPanel();
+    }
+});
+
+init();
+</script>
+</body>
+</html>
