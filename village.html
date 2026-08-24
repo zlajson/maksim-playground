@@ -273,7 +273,7 @@ function generateMap() {
         // Keep center area somewhat clear
         const cx = MAP_WIDTH / 2, cy = MAP_HEIGHT / 2;
         const dist = Math.hypot(tx - cx, ty - cy);
-        if (dist < 4) continue;
+        if (dist < 6) continue;
         state.trees.push({
             x: tx, y: ty,
             health: 3,
@@ -337,7 +337,7 @@ canvas.addEventListener('mousemove', e => {
 
 canvas.addEventListener('mouseup', e => {
     if (e.button === 0) {
-        const wasDrag = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) > 5;
+        const wasDrag = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) > 10;
         isDragging = false;
         if (!wasDrag) handleClick(e);
     }
@@ -425,7 +425,7 @@ function canPlaceBuilding(tx, ty, type) {
             ty < b.y + b.size && ty + def.size > b.y) return false;
     }
 
-    // Check trees
+    // Check trees (only check tiles the building would occupy)
     for (const tree of state.trees) {
         if (tree.alive && tree.x >= tx && tree.x < tx + def.size &&
             tree.y >= ty && tree.y < ty + def.size) return false;
@@ -1020,7 +1020,12 @@ function updateBuildPanel() {
         `;
 
         btn.addEventListener('click', () => {
-            if (!canAfford) {
+            // Re-check affordability at click time
+            let affordable = true;
+            for (const [r, a] of Object.entries(def.cost)) {
+                if ((state.resources[r] || 0) < a) { affordable = false; break; }
+            }
+            if (!affordable) {
                 notify('Not enough resources!', true);
                 return;
             }
