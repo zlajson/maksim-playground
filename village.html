@@ -6,54 +6,47 @@
 <title>VILLAGE.IO</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { 
-    background: #1a1a2e; 
-    overflow: hidden; 
-    font-family: 'Segoe UI', sans-serif;
-    user-select: none;
-}
+body { background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
 canvas { display: block; }
 
-#ui-overlay {
+#hud {
     position: fixed;
     top: 0; left: 0; right: 0;
-    pointer-events: none;
-    z-index: 10;
-}
-
-#resource-bar {
+    padding: 12px 20px;
+    background: rgba(0,0,0,0.7);
     display: flex;
-    gap: 16px;
-    padding: 10px 20px;
-    background: rgba(20, 20, 40, 0.9);
-    border-bottom: 2px solid #3a3a5c;
-    pointer-events: auto;
+    gap: 20px;
+    align-items: center;
+    z-index: 100;
     flex-wrap: wrap;
 }
-
-.resource-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #e0e0e0;
+#hud .item {
+    color: #eee;
     font-size: 14px;
-    font-weight: 500;
-}
-
-.resource-icon {
-    width: 22px;
-    height: 22px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 16px;
+    gap: 5px;
 }
+#hud .val { font-weight: 700; color: #fff; }
 
-.resource-value {
-    color: #fff;
+#day-indicator {
+    position: fixed;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 16px;
     font-weight: 700;
-    min-width: 30px;
+    z-index: 100;
+    transition: all 1s;
+    pointer-events: none;
 }
+#day-indicator.day { background: rgba(255,200,50,0.8); color: #333; }
+#day-indicator.night { background: rgba(80,0,0,0.9); color: #ff4444; }
+#day-indicator.warning { background: rgba(180,80,0,0.9); color: #fff; animation: pulse 0.5s infinite alternate; }
+
+@keyframes pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.05); } }
 
 #build-panel {
     position: fixed;
@@ -63,647 +56,735 @@ canvas { display: block; }
     display: flex;
     gap: 8px;
     padding: 12px 16px;
-    background: rgba(20, 20, 40, 0.95);
-    border: 2px solid #3a3a5c;
+    background: rgba(0,0,0,0.85);
+    border: 2px solid #444;
     border-radius: 12px;
-    pointer-events: auto;
-    z-index: 10;
+    z-index: 100;
 }
-
 .build-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 10px 14px;
-    background: #2a2a4a;
-    border: 2px solid #4a4a6a;
+    gap: 3px;
+    padding: 8px 12px;
+    background: #222;
+    border: 2px solid #555;
     border-radius: 8px;
     color: #ccc;
     cursor: pointer;
     transition: all 0.2s;
-    min-width: 70px;
+    min-width: 65px;
 }
+.build-btn:hover { background: #333; border-color: #888; color: #fff; }
+.build-btn.active { background: #1a3a1a; border-color: #5a5; color: #5f5; }
+.build-btn.disabled { opacity: 0.35; cursor: not-allowed; }
+.build-btn .icon { font-size: 20px; }
+.build-btn .label { font-size: 9px; font-weight: 600; text-transform: uppercase; }
+.build-btn .cost { font-size: 8px; color: #888; }
 
-.build-btn:hover {
-    background: #3a3a5a;
-    border-color: #7a7aaa;
-    color: #fff;
-}
-
-.build-btn.active {
-    background: #2a4a2a;
-    border-color: #5a9a5a;
-    color: #5f5;
-}
-
-.build-btn.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.build-btn .icon { font-size: 22px; }
-.build-btn .label { font-size: 10px; font-weight: 600; text-transform: uppercase; }
-.build-btn .cost { font-size: 9px; color: #999; }
-
-#notification-area {
+#notifications {
     position: fixed;
-    top: 60px;
+    top: 90px;
     right: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    z-index: 100;
     pointer-events: none;
-    z-index: 20;
 }
-
-.notification {
-    padding: 10px 16px;
-    background: rgba(20, 60, 20, 0.9);
-    border: 1px solid #4a8a4a;
-    border-radius: 8px;
-    color: #aaffaa;
-    font-size: 13px;
-    animation: slideIn 0.3s ease, fadeOut 0.5s ease 2.5s forwards;
-}
-
-.notification.warning {
-    background: rgba(80, 40, 10, 0.9);
-    border-color: #aa6a2a;
-    color: #ffcc88;
-}
-
-@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
-
-#game-title {
-    position: fixed;
-    top: 52px;
-    left: 20px;
-    color: #7a9aff;
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: 2px;
-    pointer-events: none;
-    z-index: 10;
-    text-shadow: 0 0 10px rgba(100,150,255,0.3);
-}
-
-#village-stats {
-    position: fixed;
-    top: 80px;
-    left: 20px;
-    color: #aaa;
+.notif {
+    padding: 8px 14px;
+    margin-bottom: 6px;
+    background: rgba(0,60,0,0.9);
+    border: 1px solid #4a4;
+    border-radius: 6px;
+    color: #afa;
     font-size: 12px;
-    pointer-events: none;
-    z-index: 10;
-    line-height: 1.6;
+    animation: slideIn 0.3s ease, fadeOut 0.5s 2.5s forwards;
 }
+.notif.warn { background: rgba(80,0,0,0.9); border-color: #a44; color: #faa; }
+@keyframes slideIn { from { opacity: 0; transform: translateX(30px); } }
+@keyframes fadeOut { to { opacity: 0; } }
+
+#death-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    color: #ff3333;
+    font-size: 48px;
+    font-weight: 800;
+}
+#death-screen p { color: #aaa; font-size: 18px; margin-top: 20px; font-weight: 400; }
+#death-screen button {
+    margin-top: 30px;
+    padding: 12px 30px;
+    font-size: 16px;
+    background: #333;
+    border: 2px solid #666;
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+}
+#death-screen button:hover { background: #555; }
 
 #instructions {
     position: fixed;
-    bottom: 90px;
+    bottom: 85px;
     left: 20px;
     color: #666;
     font-size: 11px;
-    pointer-events: none;
-    z-index: 10;
     line-height: 1.6;
+    z-index: 100;
+    pointer-events: none;
 }
 
-#tooltip {
+#crosshair {
     position: fixed;
-    padding: 8px 12px;
-    background: rgba(10, 10, 30, 0.95);
-    border: 1px solid #5a5a8a;
-    border-radius: 6px;
-    color: #ddd;
-    font-size: 12px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 50%;
     pointer-events: none;
-    z-index: 30;
-    display: none;
-    max-width: 200px;
-    line-height: 1.4;
+    z-index: 50;
 }
+#crosshair::before, #crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(255,255,255,0.5);
+}
+#crosshair::before { width: 2px; height: 6px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+#crosshair::after { width: 6px; height: 2px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
 </style>
 </head>
 <body>
 
-<div id="ui-overlay">
-    <div id="resource-bar">
-        <div class="resource-item"><span class="resource-icon">🪵</span><span>Wood:</span><span class="resource-value" id="res-wood">0</span></div>
-        <div class="resource-item"><span class="resource-icon">🪵</span><span>Planks:</span><span class="resource-value" id="res-planks">0</span></div>
-        <div class="resource-item"><span class="resource-icon">🌾</span><span>Wheat:</span><span class="resource-value" id="res-wheat">0</span></div>
-        <div class="resource-item"><span class="resource-icon">🫘</span><span>Flour:</span><span class="resource-value" id="res-flour">0</span></div>
-        <div class="resource-item"><span class="resource-icon">🍞</span><span>Bread:</span><span class="resource-value" id="res-bread">0</span></div>
-        <div class="resource-item"><span class="resource-icon">🪙</span><span>Gold:</span><span class="resource-value" id="res-gold">0</span></div>
-        <div class="resource-item"><span class="resource-icon">👥</span><span>Villagers:</span><span class="resource-value" id="res-villagers">0</span></div>
-    </div>
+<div id="hud">
+    <div class="item">🪵 Wood: <span class="val" id="h-wood">0</span></div>
+    <div class="item">🪵 Planks: <span class="val" id="h-planks">0</span></div>
+    <div class="item">🌾 Wheat: <span class="val" id="h-wheat">0</span></div>
+    <div class="item">🍞 Bread: <span class="val" id="h-bread">0</span></div>
+    <div class="item">🪙 Gold: <span class="val" id="h-gold">0</span></div>
+    <div class="item">❤️ HP: <span class="val" id="h-hp">100</span></div>
+    <div class="item">👥 Villagers: <span class="val" id="h-villagers">0</span></div>
 </div>
 
-<div id="game-title">VILLAGE.IO</div>
-<div id="village-stats"></div>
-<div id="instructions">
-    WASD / Arrows: Move camera<br>
-    Click tree: Chop wood<br>
-    Select building below, click to place<br>
-    Scroll: Zoom
-</div>
-
+<div id="day-indicator" class="day">☀️ DAY</div>
 <div id="build-panel"></div>
-<div id="notification-area"></div>
-<div id="tooltip"></div>
+<div id="notifications"></div>
+<div id="crosshair"></div>
 
-<canvas id="game"></canvas>
+<div id="instructions">
+    WASD: Move | Mouse: Look<br>
+    Click: Chop tree / Place building<br>
+    E: Enter/Exit building | ESC: Cancel build<br>
+    1-7: Select building | Night = Zombies!
+</div>
 
+<div id="death-screen">
+    ☠️ YOU DIED
+    <p>The zombies got you! Seek shelter at night.</p>
+    <button onclick="restartGame()">Try Again</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ===== GAME CONSTANTS =====
-const TILE_SIZE = 64;
-const MAP_WIDTH = 40;
-const MAP_HEIGHT = 40;
-const TREE_REGROW_TIME = 30000;
+// ===== GAME CONFIG =====
+const WORLD_SIZE = 100;
+const TILE = 2;
+const DAY_LENGTH = 60000; // 60 seconds full cycle
+const NIGHT_START = 0.4; // 40% of cycle is day
+const NIGHT_END = 0.9;
 
-// ===== BUILDING DEFINITIONS =====
 const BUILDINGS = {
-    lumberjack: { name: 'Lumberjack', icon: '🪓', cost: { wood: 10 }, size: 2, desc: 'Auto-chops nearby trees', color: '#5a3a1a', produces: 'wood', rate: 3000 },
-    sawmill: { name: 'Sawmill', icon: '🏭', cost: { wood: 20 }, size: 2, desc: 'Converts wood to planks', color: '#6a4a2a', input: 'wood', output: 'planks', rate: 4000 },
-    farm: { name: 'Farm', icon: '🌾', cost: { planks: 10 }, size: 3, desc: 'Grows wheat over time', color: '#4a6a2a', produces: 'wheat', rate: 5000 },
-    windmill: { name: 'Windmill', icon: '🌬️', cost: { planks: 15, wood: 10 }, size: 2, desc: 'Grinds wheat into flour', color: '#7a6a4a', input: 'wheat', output: 'flour', rate: 4000 },
-    bakery: { name: 'Bakery', icon: '🍞', cost: { planks: 20, gold: 5 }, size: 2, desc: 'Bakes flour into bread', color: '#8a5a3a', input: 'flour', output: 'bread', rate: 5000 },
-    market: { name: 'Market', icon: '🏪', cost: { planks: 25, gold: 10 }, size: 3, desc: 'Attracts travellers to buy goods', color: '#4a4a6a', special: 'market', rate: 8000 },
-    house: { name: 'House', icon: '🏠', cost: { planks: 15, wood: 5 }, size: 2, desc: '+2 villagers capacity', color: '#5a4a3a', special: 'house' }
+    house: { name: 'House', icon: '🏠', cost: { wood: 8 }, w: 4, h: 4, d: 3.5, color: 0x8B6914, desc: 'Shelter from zombies at night', shelter: true },
+    lumberjack: { name: 'Lumberjack', icon: '🪓', cost: { wood: 12 }, w: 3, h: 3, d: 2.5, color: 0x5C3A1E, desc: 'Auto-chops trees nearby', produces: 'wood', rate: 4000, shelter: true },
+    sawmill: { name: 'Sawmill', icon: '🏭', cost: { wood: 20 }, w: 4, h: 3, d: 3, color: 0x6B4C2A, desc: 'Converts wood → planks', input: 'wood', output: 'planks', rate: 5000, shelter: true },
+    farm: { name: 'Farm', icon: '🌾', cost: { planks: 10 }, w: 5, h: 5, d: 1.5, color: 0x4A7A2A, desc: 'Grows wheat', produces: 'wheat', rate: 6000, shelter: false },
+    bakery: { name: 'Bakery', icon: '🍞', cost: { planks: 15, wood: 5 }, w: 4, h: 3, d: 3, color: 0x9A5A2A, desc: 'Wheat → Bread', input: 'wheat', output: 'bread', rate: 5000, shelter: true },
+    market: { name: 'Market', icon: '🏪', cost: { planks: 20, gold: 5 }, w: 5, h: 4, d: 3.5, color: 0x4A4A7A, desc: 'Sells goods for gold', special: 'market', rate: 8000, shelter: true },
+    wall: { name: 'Wall', icon: '🧱', cost: { planks: 3 }, w: 2, h: 0.5, d: 2.5, color: 0x777777, desc: 'Blocks zombies', shelter: false }
 };
 
-// ===== GAME STATE =====
+// ===== STATE =====
 const state = {
-    resources: { wood: 5, planks: 0, wheat: 0, flour: 0, bread: 0, gold: 0 },
+    resources: { wood: 10, planks: 0, wheat: 0, bread: 0, gold: 0 },
     buildings: [],
-    villagers: [],
     trees: [],
-    camera: { x: MAP_WIDTH * TILE_SIZE / 2 - 400, y: MAP_HEIGHT * TILE_SIZE / 2 - 300 },
-    zoom: 1,
-    selectedBuilding: null,
-    maxVillagers: 2,
-    villagersUsed: 0,
-    travellers: [],
-    particles: [],
-    notifications: [],
-    time: 0,
-    chopTarget: null
+    zombies: [],
+    hp: 100,
+    maxHp: 100,
+    dayTime: 0,
+    isNight: false,
+    inShelter: false,
+    shelterBuilding: null,
+    selectedBuild: null,
+    villagers: 2,
+    maxVillagers: 4,
+    dead: false,
+    dayCount: 1,
+    zombieWave: 0
 };
 
-// ===== CANVAS SETUP =====
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-let W, H;
+// ===== THREE.JS SETUP =====
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x87CEEB, 60, 150);
 
-function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 2, 0);
 
-// ===== MAP GENERATION =====
-function generateMap() {
-    // Place trees randomly
-    for (let i = 0; i < 200; i++) {
-        const tx = Math.floor(Math.random() * MAP_WIDTH);
-        const ty = Math.floor(Math.random() * MAP_HEIGHT);
-        // Keep center area somewhat clear
-        const cx = MAP_WIDTH / 2, cy = MAP_HEIGHT / 2;
-        const dist = Math.hypot(tx - cx, ty - cy);
-        if (dist < 6) continue;
-        state.trees.push({
-            x: tx, y: ty,
-            health: 3,
-            maxHealth: 3,
-            regrowTimer: 0,
-            alive: true,
-            type: Math.random() < 0.3 ? 'pine' : 'oak'
-        });
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+sunLight.position.set(30, 50, 30);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.left = -60;
+sunLight.shadow.camera.right = 60;
+sunLight.shadow.camera.top = 60;
+sunLight.shadow.camera.bottom = -60;
+scene.add(sunLight);
+
+const moonLight = new THREE.DirectionalLight(0x4444ff, 0);
+moonLight.position.set(-20, 30, -20);
+scene.add(moonLight);
+
+// Ground
+const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE * 2, WORLD_SIZE * 2);
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x3a7a3a });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Skybox color updates with day/night
+const skyColors = { day: 0x87CEEB, sunset: 0xFF6B35, night: 0x0a0a1a };
+
+// ===== PLAYER CONTROLLER =====
+const player = {
+    velocity: new THREE.Vector3(),
+    direction: new THREE.Vector3(),
+    speed: 8,
+    euler: new THREE.Euler(0, 0, 0, 'YXZ'),
+    locked: false
+};
+
+// Pointer lock
+renderer.domElement.addEventListener('click', () => {
+    if (!state.dead && !player.locked) {
+        renderer.domElement.requestPointerLock();
     }
+});
 
-    // Starting villagers
-    for (let i = 0; i < 2; i++) {
-        spawnVillager();
-    }
-}
+document.addEventListener('pointerlockchange', () => {
+    player.locked = document.pointerLockElement === renderer.domElement;
+});
 
-function spawnVillager() {
-    const cx = MAP_WIDTH / 2 * TILE_SIZE;
-    const cy = MAP_HEIGHT / 2 * TILE_SIZE;
-    state.villagers.push({
-        x: cx + (Math.random() - 0.5) * 100,
-        y: cy + (Math.random() - 0.5) * 100,
-        targetX: cx,
-        targetY: cy,
-        task: null,
-        building: null,
-        speed: 1.5 + Math.random() * 0.5,
-        animFrame: 0,
-        carrying: null,
-        idle: true,
-        idleTimer: 0
-    });
-}
+document.addEventListener('mousemove', (e) => {
+    if (!player.locked) return;
+    player.euler.y -= e.movementX * 0.002;
+    player.euler.x -= e.movementY * 0.002;
+    player.euler.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, player.euler.x));
+    camera.quaternion.setFromEuler(player.euler);
+});
 
-// ===== INPUT HANDLING =====
 const keys = {};
-let mouseX = 0, mouseY = 0;
-let isDragging = false;
-let dragStart = { x: 0, y: 0 };
-let camStart = { x: 0, y: 0 };
+document.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    // Number keys for build selection
+    const num = parseInt(e.key);
+    if (num >= 1 && num <= 7) {
+        const types = Object.keys(BUILDINGS);
+        if (num <= types.length) selectBuild(types[num - 1]);
+    }
+    if (e.code === 'Escape') { state.selectedBuild = null; updateBuildPanel(); }
+    if (e.code === 'KeyE') toggleShelter();
+});
+document.addEventListener('keyup', e => keys[e.code] = false);
 
-window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-
-canvas.addEventListener('mousedown', e => {
-    if (e.button === 0) {
-        isDragging = true;
-        dragStart = { x: e.clientX, y: e.clientY };
-        camStart = { x: state.camera.x, y: state.camera.y };
+// Click to chop/place
+document.addEventListener('mousedown', (e) => {
+    if (!player.locked || e.button !== 0) return;
+    if (state.selectedBuild) {
+        placeBuildingAtLook();
+    } else {
+        chopTreeAtLook();
     }
 });
 
-canvas.addEventListener('mousemove', e => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    if (isDragging) {
-        state.camera.x = camStart.x - (e.clientX - dragStart.x) / state.zoom;
-        state.camera.y = camStart.y - (e.clientY - dragStart.y) / state.zoom;
-    }
-});
-
-canvas.addEventListener('mouseup', e => {
-    if (e.button === 0) {
-        const wasDrag = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) > 10;
-        isDragging = false;
-        if (!wasDrag) handleClick(e);
-    }
-});
-
-canvas.addEventListener('wheel', e => {
-    const oldZoom = state.zoom;
-    state.zoom = Math.max(0.5, Math.min(2, state.zoom - e.deltaY * 0.001));
-    // Zoom toward mouse
-    const wx = (mouseX / oldZoom + state.camera.x);
-    const wy = (mouseY / oldZoom + state.camera.y);
-    state.camera.x = wx - mouseX / state.zoom;
-    state.camera.y = wy - mouseY / state.zoom;
-    e.preventDefault();
-}, { passive: false });
-
-function screenToWorld(sx, sy) {
-    return {
-        x: sx / state.zoom + state.camera.x,
-        y: sy / state.zoom + state.camera.y
-    };
-}
-
-function worldToTile(wx, wy) {
-    return {
-        tx: Math.floor(wx / TILE_SIZE),
-        ty: Math.floor(wy / TILE_SIZE)
-    };
-}
-
-function handleClick(e) {
-    const world = screenToWorld(e.clientX, e.clientY);
-    const tile = worldToTile(world.x, world.y);
-
-    if (state.selectedBuilding) {
-        placeBuilding(tile.tx, tile.ty, state.selectedBuilding);
-        return;
-    }
-
-    // Check if clicking a tree
-    const tree = state.trees.find(t => t.alive && t.x === tile.tx && t.y === tile.ty);
-    if (tree) {
-        chopTree(tree);
-        return;
-    }
-
-    // Check if clicking a building
-    const building = state.buildings.find(b => 
-        tile.tx >= b.x && tile.tx < b.x + b.size &&
-        tile.ty >= b.y && tile.ty < b.y + b.size
-    );
-    if (building) {
-        showBuildingInfo(building);
-    }
-}
-
-// ===== TREE CHOPPING =====
-function chopTree(tree) {
-    tree.health--;
-    spawnParticles(tree.x * TILE_SIZE + TILE_SIZE/2, tree.y * TILE_SIZE + TILE_SIZE/2, '#4a2a0a', 5);
+// ===== TREE GENERATION =====
+function createTree(x, z) {
+    const group = new THREE.Group();
     
-    if (tree.health <= 0) {
-        tree.alive = false;
-        tree.regrowTimer = TREE_REGROW_TIME;
-        state.resources.wood += 2;
-        spawnParticles(tree.x * TILE_SIZE + TILE_SIZE/2, tree.y * TILE_SIZE + TILE_SIZE/2, '#2a8a2a', 8);
-        notify(`+2 Wood from tree!`);
+    // Trunk
+    const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 2, 6);
+    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2a0a });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 1;
+    trunk.castShadow = true;
+    group.add(trunk);
+
+    // Foliage
+    const type = Math.random() < 0.4 ? 'pine' : 'oak';
+    if (type === 'pine') {
+        const coneGeo = new THREE.ConeGeometry(1, 3, 6);
+        const coneMat = new THREE.MeshLambertMaterial({ color: 0x1a6a2a });
+        const cone = new THREE.Mesh(coneGeo, coneMat);
+        cone.position.y = 3.2;
+        cone.castShadow = true;
+        group.add(cone);
+    } else {
+        const sphereGeo = new THREE.SphereGeometry(1.2, 8, 6);
+        const sphereMat = new THREE.MeshLambertMaterial({ color: 0x2a8a2a });
+        const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+        sphere.position.y = 3;
+        sphere.castShadow = true;
+        group.add(sphere);
+    }
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+
+    return { mesh: group, x, z, health: 3, alive: true, type, regrow: 0 };
+}
+
+function generateTrees() {
+    for (let i = 0; i < 150; i++) {
+        const x = (Math.random() - 0.5) * WORLD_SIZE * 1.6;
+        const z = (Math.random() - 0.5) * WORLD_SIZE * 1.6;
+        if (Math.hypot(x, z) < 8) continue; // Keep center clear
+        state.trees.push(createTree(x, z));
     }
 }
 
-// ===== BUILDING PLACEMENT =====
-function canPlaceBuilding(tx, ty, type) {
+// ===== BUILDING SYSTEM =====
+function createBuildingMesh(type, x, z) {
     const def = BUILDINGS[type];
-    // Check bounds
-    if (tx < 0 || ty < 0 || tx + def.size > MAP_WIDTH || ty + def.size > MAP_HEIGHT) return false;
-    
-    // Check resources
-    for (const [res, amount] of Object.entries(def.cost)) {
-        if ((state.resources[res] || 0) < amount) return false;
+    const group = new THREE.Group();
+
+    // Main body
+    const bodyGeo = new THREE.BoxGeometry(def.w, def.d, def.h);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: def.color });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = def.d / 2;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    // Roof (for shelter buildings)
+    if (def.shelter && type !== 'wall') {
+        const roofGeo = new THREE.ConeGeometry(Math.max(def.w, def.h) * 0.75, 1.5, 4);
+        const roofMat = new THREE.MeshLambertMaterial({ color: 0x8B0000 });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.y = def.d + 0.75;
+        roof.rotation.y = Math.PI / 4;
+        roof.castShadow = true;
+        group.add(roof);
     }
 
-    // Check overlap with other buildings
-    for (const b of state.buildings) {
-        if (tx < b.x + b.size && tx + def.size > b.x &&
-            ty < b.y + b.size && ty + def.size > b.y) return false;
+    // Door indicator
+    if (def.shelter) {
+        const doorGeo = new THREE.BoxGeometry(0.8, 1.5, 0.1);
+        const doorMat = new THREE.MeshLambertMaterial({ color: 0x3a2a0a });
+        const door = new THREE.Mesh(doorGeo, doorMat);
+        door.position.set(0, 0.75, def.h / 2 + 0.05);
+        group.add(door);
     }
 
-    return true;
+    // Type-specific details
+    if (type === 'farm') {
+        // Wheat rows
+        for (let i = -1.5; i <= 1.5; i += 0.8) {
+            const rowGeo = new THREE.BoxGeometry(def.w - 1, 0.6, 0.3);
+            const rowMat = new THREE.MeshLambertMaterial({ color: 0xDAA520 });
+            const row = new THREE.Mesh(rowGeo, rowMat);
+            row.position.set(0, 0.3, i);
+            group.add(row);
+        }
+    }
+
+    if (type === 'wall') {
+        // Wall is just the body, make it look like stone
+        body.material.color.setHex(0x888888);
+    }
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+    return group;
 }
 
-function placeBuilding(tx, ty, type) {
+function placeBuildingAtLook() {
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const hits = raycaster.intersectObject(ground);
+    if (hits.length === 0) return;
+
+    const point = hits[0].point;
+    const type = state.selectedBuild;
     const def = BUILDINGS[type];
 
-    // Check bounds
-    if (tx < 0 || ty < 0 || tx + def.size > MAP_WIDTH || ty + def.size > MAP_HEIGHT) {
-        notify('Cannot place here!', true);
+    // Snap to grid
+    const gx = Math.round(point.x / TILE) * TILE;
+    const gz = Math.round(point.z / TILE) * TILE;
+
+    // Check distance from player
+    if (Math.hypot(gx - camera.position.x, gz - camera.position.z) > 15) {
+        notify('Too far away!', true);
         return;
     }
 
     // Check resources
-    for (const [res, amount] of Object.entries(def.cost)) {
-        if ((state.resources[res] || 0) < amount) {
+    for (const [res, amt] of Object.entries(def.cost)) {
+        if ((state.resources[res] || 0) < amt) {
             notify('Not enough resources!', true);
             return;
         }
     }
 
-    // Check overlap with other buildings
+    // Check overlap with existing buildings
     for (const b of state.buildings) {
-        if (tx < b.x + b.size && tx + def.size > b.x &&
-            ty < b.y + b.size && ty + def.size > b.y) {
-            notify('Overlaps another building!', true);
+        const bd = BUILDINGS[b.type];
+        if (Math.abs(gx - b.x) < (def.w + bd.w) / 2 + 0.5 &&
+            Math.abs(gz - b.z) < (def.h + bd.h) / 2 + 0.5) {
+            notify('Too close to another building!', true);
             return;
-        }
-    }
-
-    // Clear any trees on the placement tiles (chop them automatically)
-    for (const tree of state.trees) {
-        if (tree.alive && tree.x >= tx && tree.x < tx + def.size &&
-            tree.y >= ty && tree.y < ty + def.size) {
-            tree.alive = false;
-            tree.regrowTimer = TREE_REGROW_TIME;
-            state.resources.wood += 1;
         }
     }
 
     // Deduct resources
-    for (const [res, amount] of Object.entries(def.cost)) {
-        state.resources[res] -= amount;
+    for (const [res, amt] of Object.entries(def.cost)) {
+        state.resources[res] -= amt;
     }
 
-    const building = {
-        x: tx, y: ty,
-        type: type,
-        size: def.size,
-        lastProduced: Date.now(),
-        assignedVillager: null,
-        level: 1,
-        active: true
-    };
-    state.buildings.push(building);
-
-    // Handle house special
-    if (def.special === 'house') {
-        state.maxVillagers += 2;
-        if (state.villagers.length < state.maxVillagers) {
-            spawnVillager();
-            spawnVillager();
+    // Clear trees in the area
+    for (const tree of state.trees) {
+        if (tree.alive && Math.abs(tree.x - gx) < def.w / 2 + 1 && Math.abs(tree.z - gz) < def.h / 2 + 1) {
+            tree.alive = false;
+            tree.mesh.visible = false;
+            tree.regrow = 30000;
+            state.resources.wood += 1;
         }
     }
 
-    spawnParticles(tx * TILE_SIZE + TILE_SIZE, ty * TILE_SIZE + TILE_SIZE, '#ffcc00', 12);
+    // Create building
+    const mesh = createBuildingMesh(type, gx, gz);
+    state.buildings.push({
+        type, x: gx, z: gz, mesh,
+        lastProduced: Date.now(),
+        level: 1
+    });
+
+    if (type === 'house') {
+        state.maxVillagers += 2;
+    }
+
     notify(`${def.name} built!`);
-    state.selectedBuilding = null;
+    state.selectedBuild = null;
     updateBuildPanel();
 }
 
-// ===== VILLAGER AI =====
-function updateVillagers(dt) {
-    for (const v of state.villagers) {
-        // Find task if idle
-        if (v.idle) {
-            v.idleTimer += dt;
-            if (v.idleTimer > 1000) {
-                assignTask(v);
-                v.idleTimer = 0;
-            }
-        }
+// ===== TREE CHOPPING =====
+function chopTreeAtLook() {
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
-        // Move toward target
-        const dx = v.targetX - v.x;
-        const dy = v.targetY - v.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 3) {
-            v.x += (dx / dist) * v.speed;
-            v.y += (dy / dist) * v.speed;
-            v.animFrame += 0.1;
-        } else if (v.task === 'goToBuilding' && v.building) {
-            v.task = 'working';
-            v.idle = false;
-        } else if (v.task === 'chopTree' && v.targetTree) {
-            if (v.targetTree.alive) {
-                chopTree(v.targetTree);
-                v.targetTree = null;
-            }
-            v.task = null;
-            v.idle = true;
-        }
+    for (const tree of state.trees) {
+        if (!tree.alive) continue;
+        const dist = camera.position.distanceTo(tree.mesh.position);
+        if (dist > 6) continue;
 
-        // Wander if idle
-        if (v.idle && Math.random() < 0.005) {
-            const cx = MAP_WIDTH / 2 * TILE_SIZE;
-            const cy = MAP_HEIGHT / 2 * TILE_SIZE;
-            v.targetX = cx + (Math.random() - 0.5) * 200;
-            v.targetY = cy + (Math.random() - 0.5) * 200;
+        // Simple distance + direction check
+        const toTree = new THREE.Vector3().subVectors(tree.mesh.position, camera.position).normalize();
+        const lookDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        if (toTree.dot(lookDir) > 0.85) {
+            tree.health--;
+            // Shake effect
+            tree.mesh.rotation.z = (Math.random() - 0.5) * 0.2;
+            setTimeout(() => { if (tree.mesh) tree.mesh.rotation.z = 0; }, 200);
+
+            if (tree.health <= 0) {
+                tree.alive = false;
+                tree.mesh.visible = false;
+                tree.regrow = 25000;
+                state.resources.wood += 3;
+                notify('+3 Wood!');
+            }
+            return;
         }
     }
 }
 
-function assignTask(villager) {
-    // Try to assign to unoccupied building
+// ===== SHELTER SYSTEM =====
+function toggleShelter() {
+    if (state.inShelter) {
+        // Exit
+        state.inShelter = false;
+        state.shelterBuilding = null;
+        notify('Left shelter');
+        return;
+    }
+
+    // Find nearby shelter building
     for (const b of state.buildings) {
         const def = BUILDINGS[b.type];
-        if (def.special) continue; // Houses/markets don't need workers directly
+        if (!def.shelter) continue;
+        const dist = Math.hypot(camera.position.x - b.x, camera.position.z - b.z);
+        if (dist < def.w) {
+            state.inShelter = true;
+            state.shelterBuilding = b;
+            notify('Entered shelter! Safe from zombies.');
+            return;
+        }
+    }
+    notify('No shelter nearby! Get close to a building and press E.', true);
+}
+
+// ===== ZOMBIE SYSTEM =====
+function createZombie(x, z) {
+    const group = new THREE.Group();
+
+    // Body
+    const bodyGeo = new THREE.BoxGeometry(0.6, 1.4, 0.4);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2a5a2a });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.4;
+    body.castShadow = true;
+    group.add(body);
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const headMat = new THREE.MeshLambertMaterial({ color: 0x3a6a3a });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 2.35;
+    head.castShadow = true;
+    group.add(head);
+
+    // Eyes (red glow)
+    const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.12, 2.4, 0.25);
+    group.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(0.12, 2.4, 0.25);
+    group.add(eyeR);
+
+    // Arms
+    const armGeo = new THREE.BoxGeometry(0.2, 1, 0.2);
+    const armMat = new THREE.MeshLambertMaterial({ color: 0x2a5a2a });
+    const armL = new THREE.Mesh(armGeo, armMat);
+    armL.position.set(-0.5, 1.5, 0.3);
+    armL.rotation.x = -0.5;
+    group.add(armL);
+    const armR = new THREE.Mesh(armGeo, armMat);
+    armR.position.set(0.5, 1.5, 0.3);
+    armR.rotation.x = -0.5;
+    group.add(armR);
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+
+    return { mesh: group, x, z, speed: 2 + Math.random() * 1.5, hp: 2 };
+}
+
+function spawnZombieWave() {
+    const count = 3 + state.zombieWave * 2;
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 40 + Math.random() * 20;
+        const x = camera.position.x + Math.cos(angle) * dist;
+        const z = camera.position.z + Math.sin(angle) * dist;
+        state.zombies.push(createZombie(x, z));
+    }
+    state.zombieWave++;
+    notify(`Zombie wave ${state.zombieWave}! Find shelter!`, true);
+}
+
+function updateZombies(dt) {
+    const playerPos = new THREE.Vector3(camera.position.x, 0, camera.position.z);
+
+    for (let i = state.zombies.length - 1; i >= 0; i--) {
+        const z = state.zombies[i];
+        const zPos = new THREE.Vector3(z.x, 0, z.z);
+
+        // Move toward player
+        const dir = new THREE.Vector3().subVectors(playerPos, zPos).normalize();
         
-        const hasWorker = state.villagers.some(v => v.building === b && v !== villager);
-        if (!hasWorker) {
-            villager.building = b;
-            villager.task = 'goToBuilding';
-            villager.targetX = b.x * TILE_SIZE + TILE_SIZE;
-            villager.targetY = b.y * TILE_SIZE + TILE_SIZE;
-            villager.idle = false;
-            return;
+        // Check wall collisions
+        let blocked = false;
+        for (const b of state.buildings) {
+            const def = BUILDINGS[b.type];
+            if (Math.abs(z.x + dir.x * z.speed * dt - b.x) < def.w / 2 + 0.3 &&
+                Math.abs(z.z + dir.z * z.speed * dt - b.z) < def.h / 2 + 0.3) {
+                blocked = true;
+                // Damage building visual (shake)
+                if (b.mesh && Math.random() < 0.01) {
+                    b.mesh.rotation.y = (Math.random() - 0.5) * 0.02;
+                }
+                break;
+            }
         }
-    }
 
-    // Auto chop trees if lumberjack exists
-    const hasLumberjack = state.buildings.some(b => b.type === 'lumberjack');
-    if (hasLumberjack && Math.random() < 0.3) {
-        const nearbyTree = state.trees.find(t => t.alive);
-        if (nearbyTree) {
-            villager.task = 'chopTree';
-            villager.targetTree = nearbyTree;
-            villager.targetX = nearbyTree.x * TILE_SIZE + TILE_SIZE / 2;
-            villager.targetY = nearbyTree.y * TILE_SIZE + TILE_SIZE / 2;
-            villager.idle = false;
-            return;
+        if (!blocked) {
+            z.x += dir.x * z.speed * dt;
+            z.z += dir.z * z.speed * dt;
+            z.mesh.position.set(z.x, 0, z.z);
+            z.mesh.lookAt(playerPos.x, 0, playerPos.z);
+        }
+
+        // Zombie bob animation
+        z.mesh.position.y = Math.sin(Date.now() * 0.005 + i) * 0.1;
+
+        // Check if hitting player
+        const distToPlayer = playerPos.distanceTo(zPos);
+        if (distToPlayer < 1.5 && !state.inShelter) {
+            state.hp -= 15 * dt;
+            if (state.hp <= 0) {
+                state.dead = true;
+                document.getElementById('death-screen').style.display = 'flex';
+                document.exitPointerLock();
+            }
         }
     }
 }
 
-// ===== PRODUCTION SYSTEM =====
-function updateProduction(dt) {
+function clearZombies() {
+    for (const z of state.zombies) {
+        scene.remove(z.mesh);
+    }
+    state.zombies = [];
+}
+
+// ===== DAY/NIGHT CYCLE =====
+function updateDayNight(dt) {
+    state.dayTime = (state.dayTime + dt / DAY_LENGTH) % 1;
+    const t = state.dayTime;
+
+    const wasNight = state.isNight;
+    state.isNight = t > NIGHT_START && t < NIGHT_END;
+
+    // Transition to night
+    if (state.isNight && !wasNight) {
+        spawnZombieWave();
+        document.getElementById('day-indicator').className = 'night';
+        document.getElementById('day-indicator').textContent = '🌙 NIGHT - ZOMBIES!';
+    }
+
+    // Transition to day
+    if (!state.isNight && wasNight) {
+        clearZombies();
+        state.dayCount++;
+        document.getElementById('day-indicator').className = 'day';
+        document.getElementById('day-indicator').textContent = `☀️ DAY ${state.dayCount}`;
+        state.hp = Math.min(state.maxHp, state.hp + 20);
+        notify('Sunrise! Zombies gone. +20 HP recovered.');
+    }
+
+    // Warning before night
+    if (t > NIGHT_START - 0.05 && t < NIGHT_START) {
+        document.getElementById('day-indicator').className = 'warning';
+        document.getElementById('day-indicator').textContent = '⚠️ NIGHT APPROACHING!';
+    }
+
+    // Lighting
+    let sunIntensity, moonIntensity, ambientIntensity, skyColor, fogColor;
+    if (!state.isNight) {
+        const dayProgress = t / NIGHT_START;
+        sunIntensity = 1.0;
+        moonIntensity = 0;
+        ambientIntensity = 0.5;
+        skyColor = 0x87CEEB;
+        fogColor = 0x87CEEB;
+        // Sunset warning
+        if (t > NIGHT_START - 0.1) {
+            const sunset = (t - (NIGHT_START - 0.1)) / 0.1;
+            skyColor = lerpColor(0x87CEEB, 0xFF6B35, sunset);
+            fogColor = skyColor;
+            sunIntensity = 1.0 - sunset * 0.5;
+        }
+    } else {
+        sunIntensity = 0;
+        moonIntensity = 0.3;
+        ambientIntensity = 0.1;
+        skyColor = 0x0a0a1a;
+        fogColor = 0x0a0a1a;
+    }
+
+    sunLight.intensity = sunIntensity;
+    moonLight.intensity = moonIntensity;
+    ambientLight.intensity = ambientIntensity;
+    scene.background = new THREE.Color(skyColor);
+    scene.fog.color = new THREE.Color(fogColor);
+    scene.fog.near = state.isNight ? 15 : 60;
+    scene.fog.far = state.isNight ? 40 : 150;
+}
+
+function lerpColor(a, b, t) {
+    const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+    const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+    const r = Math.round(ar + (br - ar) * t);
+    const g = Math.round(ag + (bg - ag) * t);
+    const bl = Math.round(ab + (bb - ab) * t);
+    return (r << 16) | (g << 8) | bl;
+}
+
+// ===== PRODUCTION =====
+function updateProduction() {
     const now = Date.now();
-    
     for (const b of state.buildings) {
         const def = BUILDINGS[b.type];
-        if (!def.rate) continue;
-        if (now - b.lastProduced < def.rate) continue;
+        if (!def.rate || now - b.lastProduced < def.rate) continue;
 
         if (def.produces) {
-            // Direct production (lumberjack, farm)
             if (def.produces === 'wood') {
-                // Lumberjack: auto-chop nearby tree
-                const nearbyTree = state.trees.find(t => 
-                    t.alive && Math.hypot(t.x - b.x, t.y - b.y) < 6
-                );
-                if (nearbyTree) {
-                    nearbyTree.health--;
-                    if (nearbyTree.health <= 0) {
-                        nearbyTree.alive = false;
-                        nearbyTree.regrowTimer = TREE_REGROW_TIME;
-                        state.resources.wood += 2;
-                    } else {
-                        state.resources.wood += 1;
+                const nearTree = state.trees.find(t => t.alive && Math.hypot(t.x - b.x, t.z - b.z) < 12);
+                if (nearTree) {
+                    nearTree.health--;
+                    if (nearTree.health <= 0) {
+                        nearTree.alive = false;
+                        nearTree.mesh.visible = false;
+                        nearTree.regrow = 25000;
                     }
+                    state.resources.wood += 2;
                     b.lastProduced = now;
-                    spawnParticles(b.x * TILE_SIZE + TILE_SIZE, b.y * TILE_SIZE + TILE_SIZE, '#4a8a2a', 3);
                 }
-            } else if (def.produces === 'wheat') {
-                state.resources.wheat += 1;
+            } else {
+                state.resources[def.produces] += 1;
                 b.lastProduced = now;
-                spawnParticles(b.x * TILE_SIZE + TILE_SIZE, b.y * TILE_SIZE + TILE_SIZE, '#daa520', 3);
             }
         } else if (def.input && def.output) {
-            // Conversion building
-            if (state.resources[def.input] >= 2) {
+            if ((state.resources[def.input] || 0) >= 2) {
                 state.resources[def.input] -= 2;
                 state.resources[def.output] += 1;
                 b.lastProduced = now;
-                spawnParticles(b.x * TILE_SIZE + TILE_SIZE, b.y * TILE_SIZE + TILE_SIZE, '#aaaaff', 3);
             }
         } else if (def.special === 'market') {
-            // Spawn traveller
-            if (state.travellers.length < 3) {
-                spawnTraveller(b);
+            // Auto-sell best goods
+            if (state.resources.bread > 0) {
+                state.resources.bread--;
+                state.resources.gold += 5;
+                notify('+5 Gold (sold bread)');
                 b.lastProduced = now;
-            }
-        }
-    }
-}
-
-// ===== TRAVELLER SYSTEM =====
-function spawnTraveller(market) {
-    const edge = Math.floor(Math.random() * 4);
-    let x, y;
-    if (edge === 0) { x = 0; y = Math.random() * MAP_HEIGHT * TILE_SIZE; }
-    else if (edge === 1) { x = MAP_WIDTH * TILE_SIZE; y = Math.random() * MAP_HEIGHT * TILE_SIZE; }
-    else if (edge === 2) { x = Math.random() * MAP_WIDTH * TILE_SIZE; y = 0; }
-    else { x = Math.random() * MAP_WIDTH * TILE_SIZE; y = MAP_HEIGHT * TILE_SIZE; }
-
-    state.travellers.push({
-        x, y,
-        targetX: market.x * TILE_SIZE + TILE_SIZE,
-        targetY: market.y * TILE_SIZE + TILE_SIZE,
-        speed: 1.2,
-        state: 'approaching',
-        market: market,
-        buyTimer: 0,
-        bought: false
-    });
-}
-
-function updateTravellers(dt) {
-    for (let i = state.travellers.length - 1; i >= 0; i--) {
-        const t = state.travellers[i];
-        
-        if (t.state === 'approaching') {
-            const dx = t.targetX - t.x;
-            const dy = t.targetY - t.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 5) {
-                t.x += (dx / dist) * t.speed;
-                t.y += (dy / dist) * t.speed;
-            } else {
-                t.state = 'buying';
-                t.buyTimer = 2000;
-            }
-        } else if (t.state === 'buying') {
-            t.buyTimer -= dt;
-            if (t.buyTimer <= 0) {
-                // Buy goods
-                let sold = false;
-                if (state.resources.bread > 0) {
-                    state.resources.bread--;
-                    state.resources.gold += 5;
-                    notify('+5 Gold (sold bread)');
-                    sold = true;
-                } else if (state.resources.flour > 0) {
-                    state.resources.flour--;
-                    state.resources.gold += 3;
-                    notify('+3 Gold (sold flour)');
-                    sold = true;
-                } else if (state.resources.planks > 0) {
-                    state.resources.planks -= 2;
-                    state.resources.gold += 2;
-                    notify('+2 Gold (sold planks)');
-                    sold = true;
-                } else if (state.resources.wheat > 0) {
-                    state.resources.wheat -= 2;
-                    state.resources.gold += 1;
-                    notify('+1 Gold (sold wheat)');
-                    sold = true;
-                }
-
-                if (sold) {
-                    spawnParticles(t.x, t.y, '#ffd700', 8);
-                }
-
-                // Leave
-                t.state = 'leaving';
-                const edge = Math.floor(Math.random() * 4);
-                if (edge === 0) { t.targetX = -100; t.targetY = t.y; }
-                else if (edge === 1) { t.targetX = MAP_WIDTH * TILE_SIZE + 100; t.targetY = t.y; }
-                else if (edge === 2) { t.targetX = t.x; t.targetY = -100; }
-                else { t.targetX = t.x; t.targetY = MAP_HEIGHT * TILE_SIZE + 100; }
-            }
-        } else if (t.state === 'leaving') {
-            const dx = t.targetX - t.x;
-            const dy = t.targetY - t.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 5) {
-                t.x += (dx / dist) * t.speed;
-                t.y += (dy / dist) * t.speed;
-            } else {
-                state.travellers.splice(i, 1);
+            } else if (state.resources.wheat > 2) {
+                state.resources.wheat -= 2;
+                state.resources.gold += 2;
+                notify('+2 Gold (sold wheat)');
+                b.lastProduced = now;
+            } else if (state.resources.planks > 3) {
+                state.resources.planks -= 3;
+                state.resources.gold += 2;
+                notify('+2 Gold (sold planks)');
+                b.lastProduced = now;
             }
         }
     }
@@ -713,474 +794,233 @@ function updateTravellers(dt) {
 function updateTrees(dt) {
     for (const tree of state.trees) {
         if (!tree.alive) {
-            tree.regrowTimer -= dt;
-            if (tree.regrowTimer <= 0) {
+            tree.regrow -= dt * 1000;
+            if (tree.regrow <= 0) {
                 tree.alive = true;
-                tree.health = tree.maxHealth;
+                tree.health = 3;
+                tree.mesh.visible = true;
             }
         }
     }
 }
 
-// ===== PARTICLES =====
-function spawnParticles(x, y, color, count) {
-    for (let i = 0; i < count; i++) {
-        state.particles.push({
-            x, y,
-            vx: (Math.random() - 0.5) * 4,
-            vy: (Math.random() - 0.5) * 4 - 2,
-            life: 1,
-            color,
-            size: 3 + Math.random() * 3
-        });
-    }
-}
+// ===== PLAYER MOVEMENT =====
+function updatePlayer(dt) {
+    if (state.dead || state.inShelter) return;
 
-function updateParticles(dt) {
-    for (let i = state.particles.length - 1; i >= 0; i--) {
-        const p = state.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.1;
-        p.life -= 0.02;
-        if (p.life <= 0) state.particles.splice(i, 1);
-    }
-}
+    const moveSpeed = player.speed * dt;
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    forward.y = 0;
+    forward.normalize();
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    right.y = 0;
+    right.normalize();
 
-// ===== NOTIFICATIONS =====
-function notify(text, isWarning = false) {
-    const area = document.getElementById('notification-area');
-    const el = document.createElement('div');
-    el.className = 'notification' + (isWarning ? ' warning' : '');
-    el.textContent = text;
-    area.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
-}
+    let moved = false;
+    const move = new THREE.Vector3();
+    if (keys['KeyW']) { move.add(forward); moved = true; }
+    if (keys['KeyS']) { move.sub(forward); moved = true; }
+    if (keys['KeyD']) { move.add(right); moved = true; }
+    if (keys['KeyA']) { move.sub(right); moved = true; }
 
-// ===== RENDERING =====
-function render() {
-    ctx.fillStyle = '#2a5a2a';
-    ctx.fillRect(0, 0, W, H);
+    if (moved) {
+        move.normalize().multiplyScalar(moveSpeed);
+        
+        // Collision with buildings
+        const newX = camera.position.x + move.x;
+        const newZ = camera.position.z + move.z;
+        let canMoveX = true, canMoveZ = true;
 
-    ctx.save();
-    ctx.scale(state.zoom, state.zoom);
-    ctx.translate(-state.camera.x, -state.camera.y);
-
-    // Draw ground tiles
-    const startTX = Math.max(0, Math.floor(state.camera.x / TILE_SIZE));
-    const startTY = Math.max(0, Math.floor(state.camera.y / TILE_SIZE));
-    const endTX = Math.min(MAP_WIDTH, Math.ceil((state.camera.x + W / state.zoom) / TILE_SIZE));
-    const endTY = Math.min(MAP_HEIGHT, Math.ceil((state.camera.y + H / state.zoom) / TILE_SIZE));
-
-    for (let tx = startTX; tx < endTX; tx++) {
-        for (let ty = startTY; ty < endTY; ty++) {
-            const x = tx * TILE_SIZE;
-            const y = ty * TILE_SIZE;
-            const shade = ((tx + ty) % 2 === 0) ? '#3a7a3a' : '#358035';
-            ctx.fillStyle = shade;
-            ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        for (const b of state.buildings) {
+            const def = BUILDINGS[b.type];
+            const hw = def.w / 2 + 0.5;
+            const hh = def.h / 2 + 0.5;
+            if (Math.abs(newX - b.x) < hw && Math.abs(camera.position.z - b.z) < hh) canMoveX = false;
+            if (Math.abs(camera.position.x - b.x) < hw && Math.abs(newZ - b.z) < hh) canMoveZ = false;
         }
+
+        if (canMoveX) camera.position.x = newX;
+        if (canMoveZ) camera.position.z = newZ;
+
+        // World bounds
+        camera.position.x = Math.max(-WORLD_SIZE, Math.min(WORLD_SIZE, camera.position.x));
+        camera.position.z = Math.max(-WORLD_SIZE, Math.min(WORLD_SIZE, camera.position.z));
     }
 
-    // Draw grid lines (subtle)
-    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
-    ctx.lineWidth = 0.5;
-    for (let tx = startTX; tx <= endTX; tx++) {
-        ctx.beginPath();
-        ctx.moveTo(tx * TILE_SIZE, startTY * TILE_SIZE);
-        ctx.lineTo(tx * TILE_SIZE, endTY * TILE_SIZE);
-        ctx.stroke();
-    }
-    for (let ty = startTY; ty <= endTY; ty++) {
-        ctx.beginPath();
-        ctx.moveTo(startTX * TILE_SIZE, ty * TILE_SIZE);
-        ctx.lineTo(endTX * TILE_SIZE, ty * TILE_SIZE);
-        ctx.stroke();
-    }
-
-    // Draw buildings
-    for (const b of state.buildings) {
-        drawBuilding(b);
-    }
-
-    // Draw trees
-    for (const tree of state.trees) {
-        if (tree.alive) drawTree(tree);
-    }
-
-    // Draw placement preview
-    if (state.selectedBuilding) {
-        const world = screenToWorld(mouseX, mouseY);
-        const tile = worldToTile(world.x, world.y);
-        const def = BUILDINGS[state.selectedBuilding];
-        const canPlace = canPlaceBuilding(tile.tx, tile.ty, state.selectedBuilding);
-        
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = canPlace ? '#4a8a4a' : '#8a4a4a';
-        ctx.fillRect(tile.tx * TILE_SIZE, tile.ty * TILE_SIZE, def.size * TILE_SIZE, def.size * TILE_SIZE);
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = canPlace ? '#5aff5a' : '#ff5a5a';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(tile.tx * TILE_SIZE, tile.ty * TILE_SIZE, def.size * TILE_SIZE, def.size * TILE_SIZE);
-        
-        ctx.font = `${TILE_SIZE * 0.6}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(def.icon, tile.tx * TILE_SIZE + def.size * TILE_SIZE / 2, tile.ty * TILE_SIZE + def.size * TILE_SIZE / 2 + 10);
-    }
-
-    // Draw villagers
-    for (const v of state.villagers) {
-        drawVillager(v);
-    }
-
-    // Draw travellers
-    for (const t of state.travellers) {
-        drawTraveller(t);
-    }
-
-    // Draw particles
-    for (const p of state.particles) {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-
-    ctx.restore();
+    camera.position.y = 2; // Fixed height
 }
 
-function drawTree(tree) {
-    const x = tree.x * TILE_SIZE + TILE_SIZE / 2;
-    const y = tree.y * TILE_SIZE + TILE_SIZE;
-    
-    // Trunk
-    ctx.fillStyle = '#4a2a0a';
-    ctx.fillRect(x - 4, y - 30, 8, 30);
-    
-    // Foliage
-    if (tree.type === 'pine') {
-        ctx.fillStyle = '#1a6a2a';
-        ctx.beginPath();
-        ctx.moveTo(x, y - 55);
-        ctx.lineTo(x - 18, y - 20);
-        ctx.lineTo(x + 18, y - 20);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#1a5a1a';
-        ctx.beginPath();
-        ctx.moveTo(x, y - 45);
-        ctx.lineTo(x - 14, y - 18);
-        ctx.lineTo(x + 14, y - 18);
-        ctx.closePath();
-        ctx.fill();
-    } else {
-        ctx.fillStyle = '#2a8a2a';
-        ctx.beginPath();
-        ctx.arc(x, y - 35, 18, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#1a6a1a';
-        ctx.beginPath();
-        ctx.arc(x - 6, y - 38, 12, 0, Math.PI * 2);
-        ctx.fill();
+// ===== BUILD PANEL =====
+function selectBuild(type) {
+    const def = BUILDINGS[type];
+    let canAfford = true;
+    for (const [r, a] of Object.entries(def.cost)) {
+        if ((state.resources[r] || 0) < a) canAfford = false;
     }
-
-    // Health bar if damaged
-    if (tree.health < tree.maxHealth) {
-        const barW = 30;
-        const pct = tree.health / tree.maxHealth;
-        ctx.fillStyle = '#333';
-        ctx.fillRect(x - barW/2, y - 60, barW, 4);
-        ctx.fillStyle = pct > 0.5 ? '#4a4' : '#a44';
-        ctx.fillRect(x - barW/2, y - 60, barW * pct, 4);
+    if (!canAfford) {
+        notify('Not enough resources!', true);
+        return;
     }
-}
-
-function drawBuilding(b) {
-    const def = BUILDINGS[b.type];
-    const x = b.x * TILE_SIZE;
-    const y = b.y * TILE_SIZE;
-    const s = b.size * TILE_SIZE;
-
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.fillRect(x + 4, y + 4, s, s);
-
-    // Main structure
-    ctx.fillStyle = def.color;
-    ctx.fillRect(x, y, s, s);
-
-    // Roof
-    ctx.fillStyle = shadeColor(def.color, -20);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + s/2, y - s * 0.3);
-    ctx.lineTo(x + s, y);
-    ctx.closePath();
-    ctx.fill();
-
-    // Border
-    ctx.strokeStyle = shadeColor(def.color, -40);
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, s, s);
-
-    // Icon
-    ctx.font = `${s * 0.4}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(def.icon, x + s/2, y + s/2);
-
-    // Production indicator
-    const now = Date.now();
-    if (def.rate) {
-        const progress = Math.min(1, (now - b.lastProduced) / def.rate);
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(x + 4, y + s - 8, s - 8, 4);
-        ctx.fillStyle = '#5aff5a';
-        ctx.fillRect(x + 4, y + s - 8, (s - 8) * progress, 4);
-    }
-}
-
-function drawVillager(v) {
-    const bobY = Math.sin(v.animFrame) * 2;
-    
-    // Body
-    ctx.fillStyle = '#deb887';
-    ctx.beginPath();
-    ctx.arc(v.x, v.y - 12 + bobY, 6, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Head
-    ctx.fillStyle = '#f5deb3';
-    ctx.beginPath();
-    ctx.arc(v.x, v.y - 22 + bobY, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Task indicator
-    if (v.task === 'working') {
-        ctx.fillStyle = '#ffd700';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('⚒️', v.x, v.y - 30 + bobY);
-    }
-}
-
-function drawTraveller(t) {
-    // Body (different color from villagers)
-    ctx.fillStyle = '#6a4aaa';
-    ctx.beginPath();
-    ctx.arc(t.x, t.y - 12, 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Head
-    ctx.fillStyle = '#e8d0a0';
-    ctx.beginPath();
-    ctx.arc(t.x, t.y - 22, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Hat
-    ctx.fillStyle = '#4a2a6a';
-    ctx.fillRect(t.x - 6, t.y - 28, 12, 3);
-
-    // Buying indicator
-    if (t.state === 'buying') {
-        ctx.fillStyle = '#ffd700';
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('🪙', t.x, t.y - 34);
-    }
-}
-
-function shadeColor(hex, percent) {
-    const num = parseInt(hex.replace('#', ''), 16);
-    const r = Math.min(255, Math.max(0, (num >> 16) + percent));
-    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
-    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
-    return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
-}
-
-// ===== UI UPDATES =====
-function updateUI() {
-    document.getElementById('res-wood').textContent = state.resources.wood;
-    document.getElementById('res-planks').textContent = state.resources.planks;
-    document.getElementById('res-wheat').textContent = state.resources.wheat;
-    document.getElementById('res-flour').textContent = state.resources.flour;
-    document.getElementById('res-bread').textContent = state.resources.bread;
-    document.getElementById('res-gold').textContent = state.resources.gold;
-    document.getElementById('res-villagers').textContent = `${state.villagers.length}/${state.maxVillagers}`;
-
-    // Village stats
-    const stats = document.getElementById('village-stats');
-    stats.innerHTML = `
-        Buildings: ${state.buildings.length}<br>
-        Trees: ${state.trees.filter(t => t.alive).length}<br>
-        Travellers: ${state.travellers.length}
-    `;
+    state.selectedBuild = state.selectedBuild === type ? null : type;
+    updateBuildPanel();
 }
 
 function updateBuildPanel() {
     const panel = document.getElementById('build-panel');
     panel.innerHTML = '';
-
+    let i = 1;
     for (const [key, def] of Object.entries(BUILDINGS)) {
         const btn = document.createElement('div');
         btn.className = 'build-btn';
-        
+
         let canAfford = true;
         const costStr = Object.entries(def.cost).map(([r, a]) => {
-            if (state.resources[r] < a) canAfford = false;
-            return `${a} ${r}`;
-        }).join(', ');
+            if ((state.resources[r] || 0) < a) canAfford = false;
+            return `${a}${r.charAt(0).toUpperCase()}`;
+        }).join(' ');
 
         if (!canAfford) btn.classList.add('disabled');
-        if (state.selectedBuilding === key) btn.classList.add('active');
+        if (state.selectedBuild === key) btn.classList.add('active');
 
-        btn.innerHTML = `
-            <span class="icon">${def.icon}</span>
-            <span class="label">${def.name}</span>
-            <span class="cost">${costStr}</span>
-        `;
-
-        btn.addEventListener('click', () => {
-            // Re-check affordability at click time
-            let affordable = true;
-            for (const [r, a] of Object.entries(def.cost)) {
-                if ((state.resources[r] || 0) < a) { affordable = false; break; }
-            }
-            if (!affordable) {
-                notify('Not enough resources!', true);
-                return;
-            }
-            state.selectedBuilding = state.selectedBuilding === key ? null : key;
-            updateBuildPanel();
-        });
-
-        btn.addEventListener('mouseenter', (e) => {
-            const tooltip = document.getElementById('tooltip');
-            tooltip.style.display = 'block';
-            tooltip.style.left = e.clientX + 10 + 'px';
-            tooltip.style.top = e.clientY - 40 + 'px';
-            tooltip.textContent = def.desc;
-        });
-
-        btn.addEventListener('mouseleave', () => {
-            document.getElementById('tooltip').style.display = 'none';
-        });
-
+        btn.innerHTML = `<span class="icon">${def.icon}</span><span class="label">${i}. ${def.name}</span><span class="cost">${costStr}</span>`;
+        btn.onclick = () => selectBuild(key);
         panel.appendChild(btn);
+        i++;
     }
 }
 
-function showBuildingInfo(building) {
-    const def = BUILDINGS[building.type];
-    notify(`${def.name} (Lv${building.level}) - ${def.desc}`);
-}
-
-// ===== CAMERA MOVEMENT =====
-function updateCamera(dt) {
-    const speed = 5;
-    if (keys['w'] || keys['arrowup']) state.camera.y -= speed;
-    if (keys['s'] || keys['arrowdown']) state.camera.y += speed;
-    if (keys['a'] || keys['arrowleft']) state.camera.x -= speed;
-    if (keys['d'] || keys['arrowright']) state.camera.x += speed;
-
-    // Clamp
-    state.camera.x = Math.max(-100, Math.min(MAP_WIDTH * TILE_SIZE - W / state.zoom + 100, state.camera.x));
-    state.camera.y = Math.max(-100, Math.min(MAP_HEIGHT * TILE_SIZE - H / state.zoom + 100, state.camera.y));
-}
-
-// ===== SAVE / LOAD =====
-function saveGame() {
-    const saveData = {
-        resources: state.resources,
-        buildings: state.buildings.map(b => ({ x: b.x, y: b.y, type: b.type, size: b.size, level: b.level })),
-        trees: state.trees.map(t => ({ x: t.x, y: t.y, health: t.health, maxHealth: t.maxHealth, alive: t.alive, type: t.type })),
-        maxVillagers: state.maxVillagers,
-        villagerCount: state.villagers.length
-    };
-    localStorage.setItem('village_io_save', JSON.stringify(saveData));
-}
-
-function loadGame() {
-    const data = localStorage.getItem('village_io_save');
-    if (!data) return false;
-    
-    try {
-        const save = JSON.parse(data);
-        state.resources = save.resources;
-        state.buildings = save.buildings.map(b => ({
-            ...b, lastProduced: Date.now(), assignedVillager: null, active: true
-        }));
-        state.trees = save.trees.map(t => ({
-            ...t, regrowTimer: t.alive ? 0 : TREE_REGROW_TIME / 2
-        }));
-        state.maxVillagers = save.maxVillagers;
-        state.villagers = [];
-        for (let i = 0; i < save.villagerCount; i++) {
-            spawnVillager();
-        }
-        return true;
-    } catch(e) {
-        return false;
+// ===== PLACEMENT PREVIEW =====
+let previewMesh = null;
+function updatePlacementPreview() {
+    if (!state.selectedBuild) {
+        if (previewMesh) { scene.remove(previewMesh); previewMesh = null; }
+        return;
     }
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const hits = raycaster.intersectObject(ground);
+    if (hits.length === 0) return;
+
+    const def = BUILDINGS[state.selectedBuild];
+    const point = hits[0].point;
+    const gx = Math.round(point.x / TILE) * TILE;
+    const gz = Math.round(point.z / TILE) * TILE;
+
+    if (!previewMesh) {
+        const geo = new THREE.BoxGeometry(def.w, def.d, def.h);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3, wireframe: true });
+        previewMesh = new THREE.Mesh(geo, mat);
+        scene.add(previewMesh);
+    }
+
+    // Update size if needed
+    previewMesh.scale.set(1, 1, 1);
+    previewMesh.geometry.dispose();
+    previewMesh.geometry = new THREE.BoxGeometry(def.w, def.d, def.h);
+    previewMesh.position.set(gx, def.d / 2, gz);
+
+    // Color based on validity
+    const dist = Math.hypot(gx - camera.position.x, gz - camera.position.z);
+    const valid = dist <= 15;
+    previewMesh.material.color.setHex(valid ? 0x00ff00 : 0xff0000);
 }
+
+// ===== UI =====
+function updateHUD() {
+    document.getElementById('h-wood').textContent = state.resources.wood;
+    document.getElementById('h-planks').textContent = state.resources.planks;
+    document.getElementById('h-wheat').textContent = state.resources.wheat;
+    document.getElementById('h-bread').textContent = state.resources.bread;
+    document.getElementById('h-gold').textContent = state.resources.gold;
+    document.getElementById('h-hp').textContent = Math.ceil(state.hp);
+    document.getElementById('h-villagers').textContent = `${state.villagers}/${state.maxVillagers}`;
+}
+
+function notify(text, warn = false) {
+    const el = document.createElement('div');
+    el.className = 'notif' + (warn ? ' warn' : '');
+    el.textContent = text;
+    document.getElementById('notifications').appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+// ===== RESTART =====
+function restartGame() {
+    // Clear everything
+    for (const t of state.trees) scene.remove(t.mesh);
+    for (const b of state.buildings) scene.remove(b.mesh);
+    clearZombies();
+    if (previewMesh) { scene.remove(previewMesh); previewMesh = null; }
+
+    state.trees = [];
+    state.buildings = [];
+    state.resources = { wood: 10, planks: 0, wheat: 0, bread: 0, gold: 0 };
+    state.hp = 100;
+    state.dayTime = 0;
+    state.isNight = false;
+    state.inShelter = false;
+    state.dead = false;
+    state.dayCount = 1;
+    state.zombieWave = 0;
+    state.selectedBuild = null;
+    state.villagers = 2;
+    state.maxVillagers = 4;
+
+    camera.position.set(0, 2, 0);
+    player.euler.set(0, 0, 0);
+    camera.quaternion.setFromEuler(player.euler);
+
+    generateTrees();
+    updateBuildPanel();
+    document.getElementById('death-screen').style.display = 'none';
+    document.getElementById('day-indicator').className = 'day';
+    document.getElementById('day-indicator').textContent = '☀️ DAY 1';
+}
+window.restartGame = restartGame;
 
 // ===== GAME LOOP =====
-let lastTime = Date.now();
-let saveTimer = 0;
+let lastTime = performance.now();
+let panelTimer = 0;
 
-function gameLoop() {
-    const now = Date.now();
-    const dt = now - lastTime;
+function animate() {
+    requestAnimationFrame(animate);
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
     lastTime = now;
-    state.time += dt;
 
-    updateCamera(dt);
-    updateVillagers(dt);
-    updateProduction(dt);
-    updateTravellers(dt);
-    updateTrees(dt);
-    updateParticles(dt);
+    if (!state.dead) {
+        updatePlayer(dt);
+        updateDayNight(dt);
+        updateProduction();
+        updateTrees(dt);
+        if (state.isNight) updateZombies(dt);
+        updatePlacementPreview();
+        updateHUD();
 
-    render();
-    updateUI();
-
-    // Auto-save every 30 seconds
-    saveTimer += dt;
-    if (saveTimer > 30000) {
-        saveGame();
-        saveTimer = 0;
+        panelTimer += dt;
+        if (panelTimer > 1) {
+            updateBuildPanel();
+            panelTimer = 0;
+        }
     }
 
-    // Refresh build panel periodically
-    if (Math.floor(state.time / 1000) % 2 === 0) {
-        updateBuildPanel();
-    }
-
-    requestAnimationFrame(gameLoop);
+    renderer.render(scene, camera);
 }
 
 // ===== INIT =====
-function init() {
-    const loaded = loadGame();
-    if (!loaded) {
-        generateMap();
-    }
-    updateBuildPanel();
-    notify('Welcome to VILLAGE.IO! Chop trees and build your village!');
-    gameLoop();
-}
-
-// Handle ESC to cancel build
-window.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-        state.selectedBuilding = null;
-        updateBuildPanel();
-    }
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-init();
+generateTrees();
+updateBuildPanel();
+scene.background = new THREE.Color(0x87CEEB);
+notify('Welcome to VILLAGE.IO! Chop trees, build shelter before night!');
+notify('Click to lock mouse. WASD to move.', true);
+animate();
 </script>
 </body>
 </html>
