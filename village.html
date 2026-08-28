@@ -454,8 +454,10 @@ function placeBuildingAtLook() {
     // Check overlap with existing buildings
     for (const b of state.buildings) {
         const bd = BUILDINGS[b.type];
-        if (Math.abs(gx - b.x) < (def.w + bd.w) / 2 + 0.5 &&
-            Math.abs(gz - b.z) < (def.h + bd.h) / 2 + 0.5) {
+        // Walls can be placed side by side (no gap buffer)
+        const buffer = (type === 'wall' && b.type === 'wall') ? 0 : 0.5;
+        if (Math.abs(gx - b.x) < (def.w + bd.w) / 2 + buffer &&
+            Math.abs(gz - b.z) < (def.h + bd.h) / 2 + buffer) {
             notify('Too close to another building!', true);
             return;
         }
