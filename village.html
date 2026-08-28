@@ -194,9 +194,9 @@ canvas { display: block; }
 // ===== GAME CONFIG =====
 const WORLD_SIZE = 100;
 const TILE = 2;
-const DAY_LENGTH = 60000; // 60 seconds full cycle
-const NIGHT_START = 0.4; // 40% of cycle is day
-const NIGHT_END = 0.9;
+const DAY_LENGTH = 270000; // 4.5 minutes full cycle
+const NIGHT_START = 0.667; // 66.7% = 3 min day
+const NIGHT_END = 0.95;
 
 const BUILDINGS = {
     house: { name: 'House', icon: '🏠', cost: { wood: 8 }, w: 4, h: 4, d: 3.5, color: 0x8B6914, desc: 'Shelter from zombies at night', shelter: true },
