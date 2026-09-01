@@ -675,27 +675,37 @@ function updateDayNight(dt) {
     const wasNight = state.isNight;
     state.isNight = t > NIGHT_START && t < NIGHT_END;
 
+    const indicator = document.getElementById('day-indicator');
+
     // Transition to night
     if (state.isNight && !wasNight) {
         spawnZombieWave();
-        document.getElementById('day-indicator').className = 'night';
-        document.getElementById('day-indicator').textContent = '🌙 NIGHT - ZOMBIES!';
     }
 
     // Transition to day
     if (!state.isNight && wasNight) {
         clearZombies();
         state.dayCount++;
-        document.getElementById('day-indicator').className = 'day';
-        document.getElementById('day-indicator').textContent = `☀️ DAY ${state.dayCount}`;
         state.hp = Math.min(state.maxHp, state.hp + 20);
         notify('Sunrise! Zombies gone. +20 HP recovered.');
     }
 
-    // Warning before night
-    if (t > NIGHT_START - 0.05 && t < NIGHT_START) {
-        document.getElementById('day-indicator').className = 'warning';
-        document.getElementById('day-indicator').textContent = '⚠️ NIGHT APPROACHING!';
+    // Update indicator with countdown timer
+    if (state.isNight) {
+        // Time left until dawn (NIGHT_END)
+        const secsLeft = Math.max(0, Math.ceil((NIGHT_END - t) * DAY_LENGTH / 1000));
+        indicator.className = 'night';
+        indicator.textContent = `🌙 NIGHT - ZOMBIES! (${secsLeft}s to dawn)`;
+    } else if (t > NIGHT_START - 0.05 && t < NIGHT_START) {
+        // Warning before night
+        const secsLeft = Math.max(0, Math.ceil((NIGHT_START - t) * DAY_LENGTH / 1000));
+        indicator.className = 'warning';
+        indicator.textContent = `⚠️ NIGHT IN ${secsLeft}s!`;
+    } else {
+        // Daytime
+        const secsLeft = Math.max(0, Math.ceil((NIGHT_START - t) * DAY_LENGTH / 1000));
+        indicator.className = 'day';
+        indicator.textContent = `☀️ DAY ${state.dayCount} (${secsLeft}s to night)`;
     }
 
     // Lighting
