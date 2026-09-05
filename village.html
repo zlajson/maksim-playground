@@ -194,9 +194,9 @@ canvas { display: block; }
 // ===== GAME CONFIG =====
 const WORLD_SIZE = 100;
 const TILE = 2;
-const DAY_LENGTH = 270000; // 4.5 minutes full cycle
-const NIGHT_START = 0.667; // 66.7% = 3 min day
-const NIGHT_END = 0.95;
+const DAY_LENGTH = 270; // 270 seconds = 4.5 minutes full cycle
+const NIGHT_START = 2 / 3; // 180 seconds = 3 minutes of day
+const NIGHT_END = 1; // 90 seconds = 1.5 minutes of night
 
 const BUILDINGS = {
     house: { name: 'House', icon: '🏠', cost: { wood: 8 }, w: 4, h: 4, d: 3.5, color: 0x8B6914, desc: 'Shelter from zombies at night', shelter: true },
@@ -700,17 +700,17 @@ function updateDayNight(dt) {
     // Update indicator with countdown timer
     if (state.isNight) {
         // Time left until dawn (NIGHT_END)
-        const secsLeft = Math.max(0, Math.ceil((NIGHT_END - t) * DAY_LENGTH / 1000));
+        const secsLeft = Math.max(0, Math.ceil((NIGHT_END - t) * DAY_LENGTH));
         indicator.className = 'night';
         indicator.textContent = `🌙 NIGHT - ZOMBIES! (${fmtTime(secsLeft)} to dawn)`;
     } else if (t > NIGHT_START - 0.05 && t < NIGHT_START) {
         // Warning before night
-        const secsLeft = Math.max(0, Math.ceil((NIGHT_START - t) * DAY_LENGTH / 1000));
+        const secsLeft = Math.max(0, Math.ceil((NIGHT_START - t) * DAY_LENGTH));
         indicator.className = 'warning';
         indicator.textContent = `⚠️ NIGHT IN ${fmtTime(secsLeft)}!`;
     } else {
         // Daytime
-        const secsLeft = Math.max(0, Math.ceil((NIGHT_START - t) * DAY_LENGTH / 1000));
+        const secsLeft = Math.max(0, Math.ceil((NIGHT_START - t) * DAY_LENGTH));
         indicator.className = 'day';
         indicator.textContent = `☀️ DAY ${state.dayCount} (${fmtTime(secsLeft)} to night)`;
     }
