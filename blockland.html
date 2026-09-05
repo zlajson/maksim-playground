@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>BLOCKLAND.IO</title>
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #09121f; font-family: "Trebuchet MS", "Segoe UI", sans-serif; color: #f5f7fb; }
+canvas { display: block; }
+
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#brand { position: absolute; top: 16px; left: 20px; letter-spacing: 4px; font-size: 21px; font-weight: 900; color: #fff; text-shadow: 0 2px 8px #17263c; }
+#brand span { color: #70e0b1; }
+#status { position: absolute; top: 54px; left: 20px; color: #e1e9f4; font-size: 12px; line-height: 1.7; text-shadow: 0 1px 4px #000; }
+#phase { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(8, 18, 32, .78); border: 1px solid rgba(255,255,255,.2); border-radius: 22px; padding: 8px 17px; font-weight: 800; font-size: 13px; letter-spacing: .4px; }
+#message { position: absolute; top: 92px; left: 50%; transform: translateX(-50%); min-width: 180px; max-width: 80vw; text-align: center; padding: 9px 14px; border-radius: 8px; background: rgba(5, 15, 25, .8); color: #d8fbe9; opacity: 0; transition: opacity .2s; }
+#message.show { opacity: 1; }
+
+#crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); }
+#crosshair::before, #crosshair::after { content: ""; position: absolute; background: rgba(255,255,255,.8); box-shadow: 0 0 3px #000; }
+#crosshair::before { width: 2px; height: 22px; left: 10px; top: 0; }
+#crosshair::after { height: 2px; width: 22px; top: 10px; left: 0; }
+
+#hotbar { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; padding: 7px; border: 2px solid rgba(255,255,255,.35); border-radius: 10px; background: rgba(7, 15, 25, .82); pointer-events: auto; }
+.slot { position: relative; width: 62px; height: 62px; border: 2px solid rgba(255,255,255,.22); border-radius: 7px; background: rgba(255,255,255,.08); color: #fff; cursor: pointer; text-align: center; transition: transform .15s, border-color .15s, background .15s; }
+.slot:hover { background: rgba(255,255,255,.18); }
+.slot.selected { transform: translateY(-6px); border-color: #70e0b1; box-shadow: 0 0 14px rgba(112,224,177,.55); background: rgba(112,224,177,.18); }
+.slot .key { position: absolute; top: 3px; left: 5px; font-size: 10px; color: #c7d4e5; }
+.slot .swatch { display: block; width: 27px; height: 27px; margin: 15px auto 1px; border: 2px solid rgba(0,0,0,.35); border-radius: 4px; }
+.slot .count { position: absolute; right: 5px; bottom: 3px; font-size: 12px; font-weight: 800; }
+.slot .name { display: block; font-size: 8px; color: #dce6f3; text-transform: uppercase; }
+
+#help { position: absolute; bottom: 23px; left: 20px; color: #c5d2e1; font-size: 11px; line-height: 1.7; text-shadow: 0 1px 4px #000; }
+#help b { color: #fff; }
+#start { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: linear-gradient(150deg, rgba(12,28,46,.96), rgba(7,15,27,.94)); }
+#start-card { width: min(470px, calc(100vw - 32px)); padding: 35px 32px; border: 1px solid rgba(112,224,177,.5); border-radius: 18px; background: rgba(16,32,49,.94); box-shadow: 0 18px 60px rgba(0,0,0,.4); text-align: center; }
+#start-card h1 { margin: 0 0 7px; font-size: 40px; letter-spacing: 5px; }
+#start-card h1 span { color: #70e0b1; }
+#start-card p { margin: 0 0 23px; color: #bbc9d9; line-height: 1.6; }
+#play { border: 0; border-radius: 9px; padding: 13px 30px; background: #70e0b1; color: #08141f; font-size: 16px; font-weight: 900; cursor: pointer; }
+#play:hover { background: #9bf1c9; transform: translateY(-1px); }
+#save-note { margin-top: 15px !important; font-size: 11px; color: #8194a9 !important; }
+
+@media (max-width: 650px) {
+  #brand { top: 10px; left: 12px; font-size: 16px; }
+  #status { top: 40px; left: 12px; font-size: 10px; }
+  #phase { top: 10px; right: 12px; left: auto; transform: none; font-size: 11px; padding: 6px 10px; }
+  #hotbar { bottom: 9px; gap: 2px; padding: 4px; }
+  .slot { width: 45px; height: 52px; }
+  .slot .swatch { width: 22px; height: 22px; margin-top: 13px; }
+  .slot .name { font-size: 7px; }
+  #help { bottom: 72px; left: 10px; font-size: 9px; }
+}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="brand">BLOCK<span>LAND</span><small>.IO</small></div>
+  <div id="status">Blocks mined: <b id="mined">0</b><br>World: <b id="world-name">Greenreach</b></div>
+  <div id="phase">☀️ DAY 1 · 2:00</div>
+  <div id="message"></div>
+  <div id="crosshair"></div>
+  <div id="help"><b>WASD</b> move · <b>SPACE</b> jump · <b>CLICK</b> mine · <b>RIGHT CLICK</b> place · <b>1–6</b> select · <b>F5</b> save</div>
+  <div id="hotbar"></div>
+</div>
+<div id="start">
+  <div id="start-card">
+    <h1>BLOCK<span>LAND</span><small>.IO</small></h1>
+    <p>An original, no-login voxel sandbox.<br>Explore Greenreach, mine materials, and build your own tiny world.</p>
+    <button id="play">ENTER THE WORLD</button>
+    <p id="save-note">Your world is saved only in this browser.</p>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// BLOCKLAND.IO is an original browser voxel sandbox. It does not use official Minecraft code, assets, or services.
+const WORLD_RADIUS = 18;
+const WORLD_HEIGHT = 12;
+const BLOCK_SIZE = 1;
+const DAY_SECONDS = 120;
+const CYCLE_SECONDS = 180;
+const STORAGE_KEY = 'blockland_io_save_v1';
+
+const BLOCKS = {
+  grass:  { name: 'Grass',  color: 0x62b84f, count: 24 },
+  dirt:   { name: 'Dirt',   color: 0x875432, count: 24 },
+  stone:  { name: 'Stone',  color: 0x7b8791, count: 16 },
+  wood:   { name: 'Wood',   color: 0x9a6337, count: 12 },
+  leaf:   { name: 'Leaf',   color: 0x2f9255, count: 18 },
+  crystal:{ name: 'Crystal',color: 0x72c9df, count: 8 }
+};
+const BLOCK_ORDER = Object.keys(BLOCKS);
+
+const state = {
+  blocks: new Map(),
+  meshes: new Map(),
+  inventory: Object.fromEntries(BLOCK_ORDER.map(type => [type, BLOCKS[type].count])),
+  selected: 0,
+  mined: 0,
+  elapsed: 0,
+  day: 1,
+  running: false,
+  velocityY: 0,
+  grounded: false,
+  spawn: new THREE.Vector3(0, 8, 8)
+};
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87c9ee);
+scene.fog = new THREE.Fog(0x87c9ee, 28, 70);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 120);
+camera.position.copy(state.spawn);
+camera.position.y = 8;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff5d5, 1.1);
+sun.position.set(-25, 40, 15);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -35;
+sun.shadow.camera.right = 35;
+sun.shadow.camera.top = 35;
+sun.shadow.camera.bottom = -35;
+scene.add(sun);
+const moon = new THREE.DirectionalLight(0x7c9cff, 0);
+moon.position.set(20, 30, -20);
+scene.add(moon);
+
+const worldGroup = new THREE.Group();
+scene.add(worldGroup);
+const blockMaterials = {};
+for (const type of BLOCK_ORDER) {
+  blockMaterials[type] = new THREE.MeshLambertMaterial({ color: BLOCKS[type].color });
+}
+
+function key(x, y, z) { return `${x},${y},${z}`; }
+function parseKey(value) { return value.split(',').map(Number); }
+function heightAt(x, z) {
+  const wave = Math.sin(x * 0.31) * 0.8 + Math.cos(z * 0.27) * 0.7 + Math.sin((x + z) * 0.14) * 0.6;
+  return Math.max(2, Math.min(6, Math.floor(3.5 + wave)));
+}
+
+function addBlock(x, y, z, type, makeMesh = true) {
+  const id = key(x, y, z);
+  if (state.blocks.has(id) || y < 0 || y >= WORLD_HEIGHT) return false;
+  state.blocks.set(id, type);
+  if (makeMesh) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), blockMaterials[type]);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.block = { x, y, z, type };
+    worldGroup.add(mesh);
+    state.meshes.set(id, mesh);
+  }
+  return true;
+}
+function removeBlock(x, y, z) {
+  const id = key(x, y, z);
+  const mesh = state.meshes.get(id);
+  if (mesh) { worldGroup.remove(mesh); mesh.geometry.dispose(); state.meshes.delete(id); }
+  return state.blocks.delete(id);
+}
+function generateWorld() {
+  state.blocks.clear();
+  for (const mesh of state.meshes.values()) { worldGroup.remove(mesh); mesh.geometry.dispose(); }
+  state.meshes.clear();
+  for (let x = -WORLD_RADIUS; x <= WORLD_RADIUS; x++) {
+    for (let z = -WORLD_RADIUS; z <= WORLD_RADIUS; z++) {
+      const top = heightAt(x, z);
+      for (let y = 0; y <= top; y++) addBlock(x, y, z, y === top ? 'grass' : (y > top - 3 ? 'dirt' : 'stone'));
+    }
+  }
+  // Original block-built trees and crystals.
+  for (let x = -WORLD_RADIUS + 2; x < WORLD_RADIUS - 1; x += 3) {
+    for (let z = -WORLD_RADIUS + 2; z < WORLD_RADIUS - 1; z += 4) {
+      if ((x * 7 + z * 11) % 5 !== 0 || Math.hypot(x, z) < 6) continue;
+      const groundY = heightAt(x, z);
+      for (let y = 1; y <= 3; y++) addBlock(x, groundY + y, z, 'wood');
+      for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+        if (Math.abs(dx) + Math.abs(dz) < 3) addBlock(x + dx, groundY + 4, z + dz, 'leaf');
+      }
+      addBlock(x, groundY + 5, z, 'leaf');
+    }
+  }
+  for (let i = 0; i < 13; i++) {
+    const x = -14 + ((i * 17) % 27), z = -13 + ((i * 23) % 25), y = heightAt(x, z) + 1;
+    addBlock(x, y, z, 'crystal');
+  }
+}
+
+function saveGame() {
+  const save = { blocks: [...state.blocks.entries()], inventory: state.inventory, selected: state.selected, mined: state.mined, elapsed: state.elapsed, day: state.day, player: camera.position.toArray() };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
+  flash('World saved in this browser.');
+}
+function loadGame() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) { generateWorld(); return; }
+  try {
+    const save = JSON.parse(raw);
+    state.blocks.clear();
+    for (const mesh of state.meshes.values()) { worldGroup.remove(mesh); mesh.geometry.dispose(); }
+    state.meshes.clear();
+    for (const [id, type] of save.blocks) { const [x, y, z] = parseKey(id); addBlock(x, y, z, type); }
+    state.inventory = { ...state.inventory, ...save.inventory };
+    state.selected = Math.min(save.selected || 0, BLOCK_ORDER.length - 1);
+    state.mined = save.mined || 0;
+    state.elapsed = save.elapsed || 0;
+    state.day = save.day || 1;
+    if (Array.isArray(save.player) && save.player.length === 3) camera.position.fromArray(save.player);
+  } catch (error) { generateWorld(); flash('A fresh world was created.'); }
+}
+
+const keysDown = {};
+let pointerLocked = false;
+let jumpQueued = false;
+document.addEventListener('keydown', event => {
+  keysDown[event.code] = true;
+  if (event.code === 'Space') { event.preventDefault(); jumpQueued = true; }
+  if (/^Digit[1-6]$/.test(event.code)) { state.selected = Number(event.code.slice(-1)) - 1; updateHotbar(); }
+  if (event.code === 'F5') { event.preventDefault(); saveGame(); }
+});
+document.addEventListener('keyup', event => { keysDown[event.code] = false; });
+
+document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === renderer.domElement; });
+document.addEventListener('mousemove', event => {
+  if (!pointerLocked || !state.running) return;
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y -= event.movementX * 0.0022;
+  camera.rotation.x -= event.movementY * 0.0022;
+  camera.rotation.x = Math.max(-1.48, Math.min(1.48, camera.rotation.x));
+});
+
+document.getElementById('play').addEventListener('click', () => {
+  state.running = true;
+  document.getElementById('start').style.display = 'none';
+  renderer.domElement.requestPointerLock();
+  flash('Explore Greenreach. Mine blocks and build something new.');
+});
+renderer.domElement.addEventListener('click', () => {
+  if (state.running && !pointerLocked) renderer.domElement.requestPointerLock();
+});
+renderer.domElement.addEventListener('contextmenu', event => event.preventDefault());
+renderer.domElement.addEventListener('mousedown', event => {
+  if (!state.running || !pointerLocked) return;
+  if (event.button === 0) mineTarget();
+  if (event.button === 2) placeTarget();
+});
+
+const raycaster = new THREE.Raycaster();
+function targetBlock() {
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const hits = raycaster.intersectObjects([...state.meshes.values()], false);
+  return hits.find(hit => hit.distance <= 7);
+}
+function mineTarget() {
+  const hit = targetBlock();
+  if (!hit) { flash('Look at a block within reach.'); return; }
+  const b = hit.object.userData.block;
+  if (b.y <= 0) { flash('The deep foundation cannot be mined.'); return; }
+  removeBlock(b.x, b.y, b.z);
+  state.inventory[b.type] = Math.min(99, state.inventory[b.type] + 1);
+  state.mined++;
+  updateHotbar();
+  flash(`Mined ${BLOCKS[b.type].name}.`);
+}
+function placeTarget() {
+  const hit = targetBlock();
+  if (!hit) { flash('Aim at a block face to build.'); return; }
+  const type = BLOCK_ORDER[state.selected];
+  if (state.inventory[type] <= 0) { flash(`No ${BLOCKS[type].name} blocks left.`); return; }
+  const b = hit.object.userData.block;
+  const normal = hit.face.normal.clone();
+  const x = b.x + Math.round(normal.x), y = b.y + Math.round(normal.y), z = b.z + Math.round(normal.z);
+  if (y < 0 || y >= WORLD_HEIGHT || state.blocks.has(key(x, y, z))) return;
+  if (Math.hypot(x - camera.position.x, z - camera.position.z) < 1.3 && y > camera.position.y - 2 && y < camera.position.y + 2) { flash('That spot is too close to you.'); return; }
+  addBlock(x, y, z, type);
+  state.inventory[type]--;
+  updateHotbar();
+}
+
+function updatePlayer(dt) {
+  const move = new THREE.Vector3();
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); forward.y = 0; forward.normalize();
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
+  if (keysDown.KeyW) move.add(forward); if (keysDown.KeyS) move.sub(forward); if (keysDown.KeyD) move.add(right); if (keysDown.KeyA) move.sub(right);
+  if (move.lengthSq()) { move.normalize().multiplyScalar(dt * 5.5); camera.position.add(move); }
+  if (jumpQueued && state.grounded) { state.velocityY = 7.5; state.grounded = false; }
+  jumpQueued = false;
+  state.velocityY -= 19 * dt;
+  camera.position.y += state.velocityY * dt;
+  const ground = heightAt(Math.round(camera.position.x), Math.round(camera.position.z)) + 2.15;
+  if (camera.position.y <= ground) { camera.position.y = ground; state.velocityY = 0; state.grounded = true; }
+  camera.position.x = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, camera.position.x));
+  camera.position.z = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, camera.position.z));
+}
+
+function updateCycle(dt) {
+  state.elapsed += dt;
+  const phase = state.elapsed % CYCLE_SECONDS;
+  const isDay = phase < DAY_SECONDS;
+  if (phase < dt && phase < 0.1) state.day++;
+  const remaining = isDay ? DAY_SECONDS - phase : CYCLE_SECONDS - phase;
+  const minutes = Math.floor(remaining / 60), seconds = Math.floor(remaining % 60).toString().padStart(2, '0');
+  document.getElementById('phase').textContent = `${isDay ? '☀️ DAY' : '🌙 NIGHT'} ${state.day} · ${minutes}:${seconds}`;
+  const nightAmount = isDay ? Math.max(0, (phase - DAY_SECONDS + 12) / 12) : 1;
+  const sky = isDay ? 0x87c9ee : 0x10182f;
+  scene.background.lerp(new THREE.Color(sky), Math.min(1, dt * 4));
+  scene.fog.color.lerp(new THREE.Color(sky), Math.min(1, dt * 4));
+  sun.intensity = isDay ? 1.05 : 0.08;
+  moon.intensity = isDay ? 0 : 0.42;
+  ambient.intensity = isDay ? 0.55 : 0.18;
+  if (isDay && phase > DAY_SECONDS - 12) { sun.color.setHex(0xffad70); } else { sun.color.setHex(0xfff5d5); }
+}
+
+function updateHotbar() {
+  document.getElementById('hotbar').innerHTML = BLOCK_ORDER.map((type, index) => `<button class="slot ${index === state.selected ? 'selected' : ''}" data-index="${index}"><span class="key">${index + 1}</span><span class="swatch" style="background:#${BLOCKS[type].color.toString(16).padStart(6, '0')}"></span><span class="name">${BLOCKS[type].name}</span><span class="count">${state.inventory[type]}</span></button>`).join('');
+  document.querySelectorAll('.slot').forEach(slot => slot.addEventListener('click', event => { state.selected = Number(event.currentTarget.dataset.index); updateHotbar(); }));
+}
+let messageTimer;
+function flash(text) {
+  const message = document.getElementById('message'); message.textContent = text; message.classList.add('show');
+  clearTimeout(messageTimer); messageTimer = setTimeout(() => message.classList.remove('show'), 1900);
+}
+
+window.addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+loadGame();
+updateHotbar();
+document.getElementById('mined').textContent = state.mined;
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  if (state.running) { updatePlayer(dt); updateCycle(dt); document.getElementById('mined').textContent = state.mined; }
+  renderer.render(scene, camera);
+}
+loop(last);
+</script>
+</body>
+</html>
