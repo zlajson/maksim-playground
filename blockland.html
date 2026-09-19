@@ -57,11 +57,11 @@ canvas { display: block; }
 <body>
 <div id="hud">
   <div id="brand">BLOCK<span>LAND</span><small>.IO</small></div>
-  <div id="status">Blocks mined: <b id="mined">0</b><br>World: <b id="world-name">Greenreach</b></div>
+  <div id="status">Blocks mined: <b id="mined">0</b><br>HP: <b id="hp">100</b><br>World: <b id="world-name">Greenreach</b></div>
   <div id="phase">☀️ DAY 1 · 2:00</div>
   <div id="message"></div>
   <div id="crosshair"></div>
-  <div id="help"><b>WASD</b> move · <b>SPACE</b> jump · <b>CLICK</b> mine · <b>RIGHT CLICK</b> place · <b>1–6</b> select · <b>F5</b> save</div>
+  <div id="help"><b>WASD</b> move · <b>SPACE</b> jump · <b>CLICK</b> mine · <b>RIGHT CLICK</b> place · <b>1–6</b> select · <b>F5</b> save · Mine below to descend · Night: zombies</div>
   <div id="hotbar"></div>
 </div>
 <div id="start">
@@ -101,6 +101,10 @@ const state = {
   elapsed: 0,
   day: 1,
   running: false,
+  isNight: false,
+  zombies: [],
+  zombieWave: 0,
+  hp: 100,
   velocityY: 0,
   grounded: false,
   spawn: new THREE.Vector3(0, 8, 8)
@@ -136,6 +140,8 @@ scene.add(moon);
 
 const worldGroup = new THREE.Group();
 scene.add(worldGroup);
+const zombieGroup = new THREE.Group();
+scene.add(zombieGroup);
 const blockMaterials = {};
 for (const type of BLOCK_ORDER) {
   blockMaterials[type] = new THREE.MeshLambertMaterial({ color: BLOCKS[type].color });
@@ -146,6 +152,18 @@ function parseKey(value) { return value.split(',').map(Number); }
 function heightAt(x, z) {
   const wave = Math.sin(x * 0.31) * 0.8 + Math.cos(z * 0.27) * 0.7 + Math.sin((x + z) * 0.14) * 0.6;
   return Math.max(2, Math.min(6, Math.floor(3.5 + wave)));
+}
+function getHighestBlockY(x, z) {
+  for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+    if (state.blocks.has(key(x, y, z))) return y;
+  }
+  return -1;
+}
+function getPlayerFloorY() {
+  const x = Math.round(camera.position.x);
+  const z = Math.round(camera.position.z);
+  const supportY = getHighestBlockY(x, z);
+  return supportY >= 0 ? supportY + 2.15 : 1.15;
 }
 
 function addBlock(x, y, z, type, makeMesh = true) {
@@ -266,12 +284,20 @@ function mineTarget() {
   const hit = targetBlock();
   if (!hit) { flash('Look at a block within reach.'); return; }
   const b = hit.object.userData.block;
-  if (b.y <= 0) { flash('The deep foundation cannot be mined.'); return; }
-  removeBlock(b.x, b.y, b.z);
-  state.inventory[b.type] = Math.min(99, state.inventory[b.type] + 1);
-  state.mined++;
-  updateHotbar();
-  flash(`Mined ${BLOCKS[b.type].name}.`);
+  if (b.y <= 0) { flash('Bedrock is too deep to mine.'); return; }
+  if (removeBlock(b.x, b.y, b.z)) {
+    state.inventory[b.type] = Math.min(99, state.inventory[b.type] + 1);
+    state.mined++;
+    // If the block below the player was mined, gravity opens the shaft and pulls the player down.
+    if (b.x === Math.round(camera.position.x) && b.z === Math.round(camera.position.z) && b.y < camera.position.y - 1) {
+      state.grounded = false;
+      state.velocityY = Math.min(state.velocityY, -2);
+      flash(`Mined ${BLOCKS[b.type].name}. You are descending.`);
+    } else {
+      flash(`Mined ${BLOCKS[b.type].name}.`);
+    }
+    updateHotbar();
+  }
 }
 function placeTarget() {
   const hit = targetBlock();
@@ -298,16 +324,105 @@ function updatePlayer(dt) {
   jumpQueued = false;
   state.velocityY -= 19 * dt;
   camera.position.y += state.velocityY * dt;
-  const ground = heightAt(Math.round(camera.position.x), Math.round(camera.position.z)) + 2.15;
+  const ground = getPlayerFloorY();
   if (camera.position.y <= ground) { camera.position.y = ground; state.velocityY = 0; state.grounded = true; }
   camera.position.x = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, camera.position.x));
   camera.position.z = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, camera.position.z));
+}
+
+function createZombie(x, z) {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.65, 1.25, 0.45), new THREE.MeshLambertMaterial({ color: 0x376b4f }));
+  body.position.y = 1.05;
+  body.castShadow = true;
+  group.add(body);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), new THREE.MeshLambertMaterial({ color: 0x4f9365 }));
+  head.position.y = 1.95;
+  head.castShadow = true;
+  group.add(head);
+  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff3b3b });
+  for (const eyeX of [-0.13, 0.13]) {
+    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.05), eyeMaterial);
+    eye.position.set(eyeX, 2.02, 0.27);
+    group.add(eye);
+  }
+  group.position.set(x, getHighestBlockY(Math.round(x), Math.round(z)) + 0.5, z);
+  zombieGroup.add(group);
+  return { mesh: group, x, z, speed: 1.1 + Math.random() * 0.45, attackCooldown: 0, phase: Math.random() * Math.PI * 2 };
+}
+function clearZombies() {
+  for (const zombie of state.zombies) {
+    zombieGroup.remove(zombie.mesh);
+    zombie.mesh.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material && child.material.dispose) child.material.dispose();
+    });
+  }
+  state.zombies = [];
+}
+function spawnZombieWave() {
+  clearZombies();
+  const count = Math.min(12, 3 + Math.floor(state.day / 2));
+  let spawned = 0;
+  for (let attempt = 0; attempt < count * 8 && spawned < count; attempt++) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 10 + Math.random() * 8;
+    const x = Math.round(camera.position.x + Math.cos(angle) * distance);
+    const z = Math.round(camera.position.z + Math.sin(angle) * distance);
+    if (x <= -WORLD_RADIUS + 1 || x >= WORLD_RADIUS - 1 || z <= -WORLD_RADIUS + 1 || z >= WORLD_RADIUS - 1) continue;
+    if (Math.hypot(x - camera.position.x, z - camera.position.z) < 8) continue;
+    const top = getHighestBlockY(x, z);
+    if (top < 0) continue;
+    state.zombies.push(createZombie(x, z));
+    spawned++;
+  }
+  state.zombieWave++;
+  flash(`Night ${state.zombieWave}: ${state.zombies.length} zombies arrived!`);
+}
+function respawnPlayer() {
+  camera.position.copy(state.spawn);
+  camera.position.y = getPlayerFloorY();
+  state.velocityY = 0;
+  state.grounded = true;
+  state.hp = 100;
+  flash('The zombies got you. You respawned at Greenreach.');
+}
+function updateZombies(dt) {
+  const playerX = camera.position.x;
+  const playerZ = camera.position.z;
+  for (const zombie of state.zombies) {
+    const dx = playerX - zombie.x;
+    const dz = playerZ - zombie.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance > 1.35) {
+      zombie.x += (dx / Math.max(distance, 0.001)) * zombie.speed * dt;
+      zombie.z += (dz / Math.max(distance, 0.001)) * zombie.speed * dt;
+      zombie.mesh.rotation.y = Math.atan2(dx, dz);
+    }
+    const top = getHighestBlockY(Math.round(zombie.x), Math.round(zombie.z));
+    zombie.mesh.position.set(zombie.x, Math.max(0, top + 0.5) + Math.sin(performance.now() * 0.006 + zombie.phase) * 0.06, zombie.z);
+    zombie.attackCooldown -= dt;
+    if (distance < 1.7 && Math.abs(camera.position.y - zombie.mesh.position.y) < 3 && zombie.attackCooldown <= 0) {
+      state.hp = Math.max(0, state.hp - 12);
+      zombie.attackCooldown = 0.8;
+      flash(`A zombie hit you! ${state.hp} HP remaining.`, true);
+      if (state.hp <= 0) respawnPlayer();
+    }
+  }
 }
 
 function updateCycle(dt) {
   state.elapsed += dt;
   const phase = state.elapsed % CYCLE_SECONDS;
   const isDay = phase < DAY_SECONDS;
+  const wasNight = state.isNight;
+  state.isNight = !isDay;
+  if (state.isNight && !wasNight) spawnZombieWave();
+  if (!state.isNight && wasNight) {
+    clearZombies();
+    state.hp = Math.min(100, state.hp + 25);
+    flash('Sunrise! The zombies disappeared.');
+  }
   if (phase < dt && phase < 0.1) state.day++;
   const remaining = isDay ? DAY_SECONDS - phase : CYCLE_SECONDS - phase;
   const minutes = Math.floor(remaining / 60), seconds = Math.floor(remaining % 60).toString().padStart(2, '0');
@@ -340,7 +455,13 @@ let last = performance.now();
 function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
-  if (state.running) { updatePlayer(dt); updateCycle(dt); document.getElementById('mined').textContent = state.mined; }
+  if (state.running) {
+    updatePlayer(dt);
+    updateCycle(dt);
+    if (state.isNight) updateZombies(dt);
+    document.getElementById('mined').textContent = state.mined;
+    document.getElementById('hp').textContent = state.hp;
+  }
   renderer.render(scene, camera);
 }
 loop(last);
