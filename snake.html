@@ -76,27 +76,50 @@
 <body>
     <a href="index.html" style="align-self:flex-start;color:#00d4aa;text-decoration:none;margin-bottom:10px;font-size:0.9rem;">← Back to Arcade</a>
     <h1>🐍 Maxim Snake</h1>
-    <div id="score">Score: <span id="score-value">0</span></div>
+    <div id="score">Score: <span id="score-value">0</span> · Level: <span id="level-value">1</span></div>
     <canvas id="game" width="400" height="400"></canvas>
     <div id="game-over">
         <h2>Game Over!</h2>
-        <p>Final Score: <span id="final-score">0</span></p>
+        <p>Final Score: <span id="final-score">0</span> · Level: <span id="final-level">1</span></p>
         <button id="restart-btn">Play Again</button>
     </div>
-    <p id="instructions">Arrow keys / WASD to move · Swipe on mobile</p>
+    <p id="instructions">Arrow keys / WASD to move · Swipe on mobile · Every 5 food increases your level and speed</p>
 
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score-value');
+        const levelEl = document.getElementById('level-value');
         const finalScoreEl = document.getElementById('final-score');
+        const finalLevelEl = document.getElementById('final-level');
         const gameOverEl = document.getElementById('game-over');
         const restartBtn = document.getElementById('restart-btn');
 
         const GRID_SIZE = 20;
         const TILE_COUNT = canvas.width / GRID_SIZE;
+        const START_SPEED = 120;
+        const MIN_SPEED = 55;
+        const FOODS_PER_LEVEL = 5;
 
-        let snake, food, dx, dy, score, gameLoop, gameRunning;
+        let snake, food, dx, dy, score, level, gameLoop, gameRunning;
+
+        function getGameSpeed() {
+            return Math.max(MIN_SPEED, START_SPEED - (level - 1) * 10);
+        }
+
+        function startGameLoop() {
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, getGameSpeed());
+        }
+
+        function updateLevel() {
+            const nextLevel = Math.floor(score / FOODS_PER_LEVEL) + 1;
+            if (nextLevel === level) return;
+
+            level = nextLevel;
+            levelEl.textContent = level;
+            startGameLoop();
+        }
 
         function init() {
             snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
@@ -104,12 +127,14 @@
             dx = 1;
             dy = 0;
             score = 0;
+            level = 1;
             gameRunning = true;
             scoreEl.textContent = '0';
+            levelEl.textContent = '1';
+            finalLevelEl.textContent = '1';
             gameOverEl.style.display = 'none';
 
-            if (gameLoop) clearInterval(gameLoop);
-            gameLoop = setInterval(update, 120);
+            startGameLoop();
         }
 
         function spawnFood() {
@@ -144,6 +169,7 @@
             if (head.x === food.x && head.y === food.y) {
                 score++;
                 scoreEl.textContent = score;
+                updateLevel();
                 food = spawnFood();
             } else {
                 snake.pop();
@@ -197,6 +223,7 @@
             gameRunning = false;
             clearInterval(gameLoop);
             finalScoreEl.textContent = score;
+            finalLevelEl.textContent = level;
             gameOverEl.style.display = 'block';
         }
 
